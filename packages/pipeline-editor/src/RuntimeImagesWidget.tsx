@@ -24,6 +24,8 @@ import { IMetadataResource } from '@elyra/services';
 
 import React from 'react';
 
+import { DockerfileImageBuilderWidget } from './DockerfileImageBuilderWidget';
+
 export const RUNTIME_IMAGES_SCHEMASPACE = 'runtime-images';
 
 const RUNTIME_IMAGES_CLASS = 'elyra-metadata-runtime-images';
@@ -83,26 +85,32 @@ export class RuntimeImagesWidget extends MetadataWidget {
     if (Array.isArray(metadata) && !metadata.length) {
       // Empty metadata
       return (
-        <div>
-          <br />
-          <h6 className="elyra-no-metadata-msg">
-            Click the + button to add {this.props.display_name.toLowerCase()}
-          </h6>
+        <div className={RUNTIME_IMAGES_CLASS}>
+          <DockerfileImageBuilderWidget />
+          <div>
+            <br />
+            <h6 className="elyra-no-metadata-msg">
+              Click the + button to add {this.props.display_name.toLowerCase()}
+            </h6>
+          </div>
         </div>
       );
     }
     return (
-      <RuntimeImagesDisplay
-        metadata={metadata}
-        updateMetadata={this.updateMetadata}
-        openMetadataEditor={this.openMetadataEditor}
-        schemaspace={RUNTIME_IMAGES_SCHEMASPACE}
-        sortMetadata={true}
-        className={RUNTIME_IMAGES_CLASS}
-        labelName={(): string => {
-          return 'runtime image';
-        }}
-      />
+      <div className={RUNTIME_IMAGES_CLASS}>
+        <DockerfileImageBuilderWidget />
+        <RuntimeImagesDisplay
+          metadata={metadata}
+          updateMetadata={this.updateMetadata}
+          openMetadataEditor={this.openMetadataEditor}
+          schemaspace={RUNTIME_IMAGES_SCHEMASPACE}
+          sortMetadata={true}
+          className={RUNTIME_IMAGES_CLASS}
+          labelName={(): string => {
+            return 'runtime image';
+          }}
+        />
+      </div>
     );
   }
 }

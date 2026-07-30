@@ -21,6 +21,17 @@ from jupyter_server.extension.application import ExtensionAppJinjaMixin
 from elyra._version import __version__
 from elyra.api.handlers import YamlSpecHandler
 from elyra.contents.handlers import ContentHandler
+from elyra.images.config import RegistrySettings
+from elyra.images.handlers import DockerfileHandler
+from elyra.images.handlers import ImageBuildCollectionHandler
+from elyra.images.handlers import ImageBuildHandler
+from elyra.images.handlers import ImageBuildLogsHandler
+from elyra.images.handlers import ImageBuildPushHandler
+from elyra.images.handlers import ImageBuildStopHandler
+from elyra.images.handlers import RegistryCredentialCollectionHandler
+from elyra.images.handlers import RegistryCredentialHandler
+from elyra.images.handlers import RuntimeImageHandler
+from elyra.images.manager import ImageBuildManager
 from elyra.metadata.handlers import MetadataHandler
 from elyra.metadata.handlers import MetadataResourceHandler
 from elyra.metadata.handlers import SchemaHandler
@@ -76,6 +87,7 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
         PipelineProcessor,
         ComponentCatalogConnector,
         ComponentCache,
+        RegistrySettings,
     ]
 
     # Local path to static files directory.
@@ -99,6 +111,8 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
         catalog_regex = r"(?P<catalog>[\w\.\-:]+)"
         schedule_id_regex = r"(?P<schedule_id>[\w\.\-]+)"
         run_id_regex = r"(?P<run_id>[\w\.\-]+)"
+        image_build_id_regex = r"(?P<build_id>[\w\.\-]+)"
+        credential_id_regex = r"(?P<credential_id>[\w\.\-]+)"
 
         self.handlers.extend(
             [
@@ -113,6 +127,16 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
                 (f"/{self.name}/schema/{schemaspace_regex}/{resource_regex}", SchemaResourceHandler),
                 (f"/{self.name}/schemaspace", SchemaspaceHandler),
                 (f"/{self.name}/schemaspace/{schemaspace_regex}", SchemaspaceResourceHandler),
+                # Dockerfile Image Builder
+                (f"/{self.name}/images/dockerfiles", DockerfileHandler),
+                (f"/{self.name}/images/builds", ImageBuildCollectionHandler),
+                (f"/{self.name}/images/builds/{image_build_id_regex}/logs", ImageBuildLogsHandler),
+                (f"/{self.name}/images/builds/{image_build_id_regex}/stop", ImageBuildStopHandler),
+                (f"/{self.name}/images/builds/{image_build_id_regex}/push", ImageBuildPushHandler),
+                (f"/{self.name}/images/builds/{image_build_id_regex}/runtime-image", RuntimeImageHandler),
+                (f"/{self.name}/images/builds/{image_build_id_regex}", ImageBuildHandler),
+                (f"/{self.name}/images/credentials", RegistryCredentialCollectionHandler),
+                (f"/{self.name}/images/credentials/{credential_id_regex}", RegistryCredentialHandler),
                 # Pipeline
                 (f"/{self.name}/pipeline/components/cache", ComponentCacheHandler),
                 (f"/{self.name}/pipeline/components/cache/{catalog_regex}", ComponentCacheCatalogHandler),
@@ -144,7 +168,7 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
         )
 
     def initialize_settings(self):
-        self.log.info(f"Config {self.config}")
+        self.log.debug("Initializing Elyra server settings.")
         # Instantiate singletons with appropriate parent to enable configurability, and convey
         # root_dir to PipelineProcessorManager.
         PipelineProcessorRegistry.instance(root_dir=self.settings["server_root_dir"], parent=self)
@@ -156,6 +180,10 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
         self.local_pipeline_scheduler = LocalPipelineScheduler(root_dir=self.settings["server_root_dir"])
         self.settings["elyra_local_pipeline_scheduler"] = self.local_pipeline_scheduler
         self.local_pipeline_scheduler.start()
+        self.image_build_manager = ImageBuildManager(
+            root_dir=self.settings["server_root_dir"], registry_settings=RegistrySettings(parent=self)
+        )
+        self.settings["elyra_image_build_manager"] = self.image_build_manager
 
     def initialize_templates(self):
         pass
@@ -163,6 +191,8 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
     async def stop_extension(self):
         if hasattr(self, "local_pipeline_scheduler"):
             self.local_pipeline_scheduler.stop()
+        if hasattr(self, "image_build_manager"):
+            self.image_build_manager.stop()
         PipelineProcessorRegistry.clear_instance()
         PipelineProcessorManager.clear_instance()
         PipelineValidationManager.clear_instance()

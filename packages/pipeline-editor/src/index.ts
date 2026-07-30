@@ -50,6 +50,10 @@ import {
 } from './ComponentCatalogsWidget';
 import { PipelineEditorFactory, commandIDs } from './PipelineEditorWidget';
 import {
+  LocalSchedulesWidget,
+  LOCAL_SCHEDULES_WIDGET_ID
+} from './LocalSchedulesWidget';
+import {
   IRuntimeType,
   PipelineService,
   RUNTIMES_SCHEMASPACE
@@ -407,6 +411,10 @@ const extension: JupyterFrontEndPlugin<void> = {
       command: commandIDs.submitScript,
       rank: -0.5
     });
+
+    const localSchedulesWidget = new LocalSchedulesWidget();
+    restorer.add(localSchedulesWidget, LOCAL_SCHEDULES_WIDGET_ID);
+    app.shell.add(localSchedulesWidget, 'left', { rank: 949 });
 
     const runtimesWidget = new RuntimesWidget({
       app,

@@ -134,6 +134,60 @@ body {
   margin-bottom: 50px;
 }
 
+.elyra-localSchedule-hint {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  margin: 4px 0 12px;
+}
+
+.elyra-localSchedules {
+  color: var(--jp-ui-font-color1);
+  padding: 8px;
+}
+
+.elyra-localSchedules-header,
+.elyra-localSchedules-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.elyra-localSchedules-list,
+.elyra-localSchedules-runs {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.elyra-localSchedules-list button,
+.elyra-localSchedules-runs button {
+  background: transparent;
+  border: 1px solid var(--jp-border-color2);
+  color: inherit;
+  cursor: pointer;
+  margin-bottom: 4px;
+  padding: 6px;
+  text-align: left;
+  width: 100%;
+}
+
+.elyra-localSchedules-list button.is-selected {
+  background: var(--jp-layout-color2);
+  border-color: var(--jp-brand-color1);
+}
+
+.elyra-localSchedules-list span {
+  display: block;
+  font-size: var(--jp-ui-font-size0);
+  margin-top: 2px;
+}
+
+.elyra-localSchedules-logs {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 .properties-control-panel[data-id='properties-nodeGroupInfo']
   > .properties-control-panel
   > .properties-control-item {

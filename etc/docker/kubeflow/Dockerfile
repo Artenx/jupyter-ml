@@ -39,9 +39,15 @@ RUN python3 -m pip install --upgrade pip
 # Install Elyra
 RUN python3 -m pip install --quiet --no-cache-dir "$ELYRA_PACKAGE""$ELYRA_EXTRAS"
 
-# Create and customize Elyra config file to enable only KFP runtime
+# The Kubeflow base image locks the Launcher extension, which Elyra uses to
+# register the Generic Pipeline Editor creation card.
+USER root
+RUN python3 -c "import json; from pathlib import Path; path = Path('/opt/conda/etc/jupyter/labconfig/page_config.json'); config = json.loads(path.read_text()); config.get('disabledExtensions', {}).pop('@jupyterlab/launcher-extension', None); config.get('lockedExtensions', {}).pop('@jupyterlab/launcher-extension', None); path.write_text(json.dumps(config, indent=2) + '\\n')"
+USER jovyan
+
+# Create and customize Elyra config file to enable KFP and local runtimes
 RUN jupyter elyra --generate-config
-RUN sed -i -e "s/# c.PipelineProcessorRegistry.runtimes = \[\]/c.PipelineProcessorRegistry.runtimes = \['kfp'\]/g" $(jupyter --config-dir)/jupyter_elyra_config.py
+RUN sed -i -e "s/# c.PipelineProcessorRegistry.runtimes = \[\]/c.PipelineProcessorRegistry.runtimes = \['kfp', 'local'\]/g" $(jupyter --config-dir)/jupyter_elyra_config.py
 
 # Cleanup
 USER root

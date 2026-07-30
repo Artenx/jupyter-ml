@@ -97,6 +97,31 @@ def test_pipeline_execution(pipeline_dir):
             assert os.path.exists(os.path.join(pipeline_dir, output))
 
 
+def test_pipeline_execution_notifies_run_observer(pipeline_dir):
+    node = PythonNode("node1", num_outputs=1)
+    pipeline = construct_pipeline("p1", nodes=[node], location=pipeline_dir)
+    events = []
+    operation = pipeline.operations[node.id]
+
+    class SuccessfulOperationProcessor:
+        def process(self, _operation, _run_name):
+            return None
+
+    processor = LocalPipelineProcessor(root_dir=pipeline_dir)
+    processor._operation_processor_catalog[operation.classifier] = SuccessfulOperationProcessor()
+
+    processor.process(
+        pipeline, run_observer=lambda level, message, operation_name: events.append((level, message, operation_name))
+    )
+
+    assert events == [
+        ("INFO", "Local pipeline processing started.", None),
+        ("INFO", "Operation started.", "node1"),
+        ("INFO", "Operation completed.", "node1"),
+        ("INFO", "Local pipeline processing completed.", None),
+    ]
+
+
 def test_pipeline_execution_missing_kernelspec(pipeline_dir):
     # Construct 4-node pipeline consisting of 3 notebooks and 1 python script.
     # This pipeline is "diamond shaped" with node1 feeding nodes 2 and 3, each then

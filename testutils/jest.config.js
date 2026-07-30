@@ -39,7 +39,8 @@ module.exports = {
     '^.+\\.(j|t)sx?$': [
       'ts-jest',
       {
-        tsConfig: '../../testutils/tsconfig.jest.json'
+        tsconfig: '../../testutils/tsconfig.jest.json',
+        diagnostics: { ignoreCodes: [1343] }
       }
     ],
     '\\.svg$': '@glen/jest-raw-loader'

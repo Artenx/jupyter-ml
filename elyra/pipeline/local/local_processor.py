@@ -22,6 +22,7 @@ from subprocess import PIPE
 from subprocess import run
 import sys
 import time
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -69,7 +70,7 @@ class LocalPipelineProcessor(PipelineProcessor):
     def get_components(self):
         return ComponentCache.get_generic_components()
 
-    def process(self, pipeline):
+    def process(self, pipeline, run_observer: Optional[Callable[[str, str, Optional[str]], None]] = None):
         """
         Process a pipeline locally.
         The pipeline execution consists on properly ordering the operations
@@ -78,6 +79,7 @@ class LocalPipelineProcessor(PipelineProcessor):
         """
 
         self.log_pipeline_info(pipeline.name, "processing pipeline")
+        self._notify(run_observer, "INFO", "Local pipeline processing started.")
         t0_all = time.time()
 
         # This unique run identifier is made available to all
@@ -96,6 +98,7 @@ class LocalPipelineProcessor(PipelineProcessor):
             assert isinstance(operation, GenericOperation)
             try:
                 t0 = time.time()
+                self._notify(run_observer, "INFO", "Operation started.", operation.name)
                 operation_processor = self._operation_processor_catalog[operation.classifier]
                 operation_processor.process(operation, elyra_run_name)
                 self.log_pipeline_info(
@@ -104,12 +107,25 @@ class LocalPipelineProcessor(PipelineProcessor):
                     operation_name=operation.name,
                     duration=(time.time() - t0),
                 )
+                self._notify(run_observer, "INFO", "Operation completed.", operation.name)
             except Exception as ex:
+                self._notify(run_observer, "ERROR", str(ex), operation.name)
                 raise RuntimeError(f"Error processing operation {operation.name} {str(ex)}") from ex
 
         self.log_pipeline_info(pipeline.name, "pipeline processed", duration=(time.time() - t0_all))
+        self._notify(run_observer, "INFO", "Local pipeline processing completed.")
 
         return LocalPipelineProcessorResponse()
+
+    @staticmethod
+    def _notify(
+        run_observer: Optional[Callable[[str, str, Optional[str]], None]],
+        level: str,
+        message: str,
+        operation_name: Optional[str] = None,
+    ) -> None:
+        if run_observer:
+            run_observer(level, message, operation_name)
 
     def export(self, pipeline, pipeline_export_format, pipeline_export_path, overwrite):
         raise NotImplementedError("Local pipelines does not support export functionality")

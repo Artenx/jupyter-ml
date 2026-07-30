@@ -38,7 +38,8 @@ import {
   RequestErrors,
   showFormDialog,
   componentCatalogIcon,
-  GenericObjectType
+  GenericObjectType,
+  IErrorResponse
 } from '@elyra/ui-components';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { Dialog, ReactWidget, showDialog } from '@jupyterlab/apputils';
@@ -80,6 +81,11 @@ import {
   EmptyPlatformSpecificPipeline
 } from './EmptyPipelineContent';
 import { formDialogWidget } from './formDialogWidget';
+import { LocalScheduleDialog } from './LocalScheduleDialog';
+import {
+  LocalScheduleService,
+  LOCAL_SCHEDULES_CHANGED_EVENT
+} from './LocalScheduleService';
 import {
   IRuntimeComponentNodeType,
   IRuntimeComponentParameter,
@@ -1048,6 +1054,38 @@ const PipelineWrapper: React.FC<
     });
   }, []);
 
+  const handleCreateLocalSchedule = useCallback(async (): Promise<void> => {
+    const pipelineJson = contextRef.current.model.toJSON() as GenericObjectType;
+    const pipelineName = PathExt.basename(
+      contextRef.current.path,
+      PathExt.extname(contextRef.current.path)
+    );
+    const result = await showDialog({
+      title: 'Create Local Schedule',
+      body: formDialogWidget(
+        <LocalScheduleDialog displayName={pipelineName || 'Local pipeline'} />
+      ),
+      buttons: [Dialog.cancelButton(), Dialog.okButton({ label: 'Create' })],
+      defaultButton: 1,
+      focusNodeSelector: '#local_schedule_name'
+    });
+    if (!result.button.accept || !result.value) {
+      return;
+    }
+    try {
+      await LocalScheduleService.createSchedule({
+        display_name: result.value.display_name,
+        pipeline_definition: pipelineJson,
+        cron_expression: result.value.cron_expression,
+        enabled: result.value.enabled
+      });
+      window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
+      toast.success('Local schedule created.');
+    } catch (error) {
+      await RequestErrors.serverError(error as IErrorResponse);
+    }
+  }, []);
+
   const onAction = useCallback(
     (args: { type: string; payload?: GenericObjectType | string }) => {
       switch (args.type) {
@@ -1060,6 +1098,9 @@ const PipelineWrapper: React.FC<
           break;
         case 'clear':
           handleClearPipeline();
+          break;
+        case 'createLocalSchedule':
+          handleCreateLocalSchedule();
           break;
         case 'toggleOpenPanel':
           setPanelOpen(!panelOpen);
@@ -1105,6 +1146,7 @@ const PipelineWrapper: React.FC<
     [
       handleSubmission,
       handleClearPipeline,
+      handleCreateLocalSchedule,
       panelOpen,
       shell,
       commands,
@@ -1135,6 +1177,15 @@ const PipelineWrapper: React.FC<
         iconEnabled: IconUtil.encode(exportPipelineIcon),
         iconDisabled: IconUtil.encode(exportPipelineIcon)
       },
+      ...(type === undefined || type === 'LOCAL'
+        ? [
+            {
+              action: 'createLocalSchedule',
+              label: 'Create Local Schedule',
+              enable: hasNodes
+            }
+          ]
+        : []),
       {
         action: 'clear',
         label: 'Clear Pipeline',

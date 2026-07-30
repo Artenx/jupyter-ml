@@ -42,6 +42,11 @@ from elyra.pipeline.handlers import PipelinePropertiesHandler
 from elyra.pipeline.handlers import PipelineRuntimeTypesHandler
 from elyra.pipeline.handlers import PipelineSchedulerHandler
 from elyra.pipeline.handlers import PipelineValidationHandler
+from elyra.pipeline.local.handlers import LocalRunLogsHandler
+from elyra.pipeline.local.handlers import LocalScheduleCollectionHandler
+from elyra.pipeline.local.handlers import LocalScheduleHandler
+from elyra.pipeline.local.handlers import LocalScheduleRunsHandler
+from elyra.pipeline.local.scheduler import LocalPipelineScheduler
 from elyra.pipeline.processor import PipelineProcessor
 from elyra.pipeline.processor import PipelineProcessorManager
 from elyra.pipeline.registry import PipelineProcessorRegistry
@@ -87,6 +92,8 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
         processor_regex = r"(?P<runtime_type>[\w]+)"
         component_regex = r"(?P<component_id>[\w\.\-:%]+)"
         catalog_regex = r"(?P<catalog>[\w\.\-:]+)"
+        schedule_id_regex = r"(?P<schedule_id>[\w\.\-]+)"
+        run_id_regex = r"(?P<run_id>[\w\.\-]+)"
 
         self.handlers.extend(
             [
@@ -119,6 +126,10 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
                 (f"/{self.name}/pipeline/runtimes/types", PipelineRuntimeTypesHandler),
                 (f"/{self.name}/pipeline/schedule", PipelineSchedulerHandler),
                 (f"/{self.name}/pipeline/validate", PipelineValidationHandler),
+                (f"/{self.name}/pipeline/local/schedules", LocalScheduleCollectionHandler),
+                (f"/{self.name}/pipeline/local/schedules/{schedule_id_regex}/runs", LocalScheduleRunsHandler),
+                (f"/{self.name}/pipeline/local/schedules/{schedule_id_regex}", LocalScheduleHandler),
+                (f"/{self.name}/pipeline/local/runs/{run_id_regex}/logs", LocalRunLogsHandler),
             ]
         )
 
@@ -132,11 +143,16 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
         FileMetadataCache.instance(parent=self)
         ComponentCache.instance(parent=self).load()
         SchemaManager.instance(parent=self)
+        self.local_pipeline_scheduler = LocalPipelineScheduler(root_dir=self.settings["server_root_dir"])
+        self.settings["elyra_local_pipeline_scheduler"] = self.local_pipeline_scheduler
+        self.local_pipeline_scheduler.start()
 
     def initialize_templates(self):
         pass
 
     async def stop_extension(self):
+        if hasattr(self, "local_pipeline_scheduler"):
+            self.local_pipeline_scheduler.stop()
         PipelineProcessorRegistry.clear_instance()
         PipelineProcessorManager.clear_instance()
         PipelineValidationManager.clear_instance()

@@ -19,9 +19,14 @@ import { Dialog, ReactWidget, showDialog } from '@jupyterlab/apputils';
 import * as React from 'react';
 
 import { formDialogWidget } from './formDialogWidget';
-import { LocalScheduleDialog } from './LocalScheduleDialog';
+import {
+  ILocalScheduleDialogValue,
+  LocalScheduleDialog,
+  retryPolicyFromDialog
+} from './LocalScheduleDialog';
 import {
   ILocalRunLogEntry,
+  ILocalRunResult,
   ILocalScheduledRun,
   ILocalSchedule,
   LocalScheduleService,
@@ -40,7 +45,9 @@ export const LocalSchedulesPanel: React.FC = () => {
     React.useState<ILocalSchedule>();
   const [runs, setRuns] = React.useState<ILocalScheduledRun[]>([]);
   const [logs, setLogs] = React.useState<ILocalRunLogEntry[]>([]);
+  const [results, setResults] = React.useState<ILocalRunResult[]>([]);
   const [selectedRun, setSelectedRun] = React.useState<ILocalScheduledRun>();
+  const [statusFilter, setStatusFilter] = React.useState('all');
   const [loading, setLoading] = React.useState(true);
 
   const loadSchedules = React.useCallback(async (): Promise<void> => {
@@ -63,6 +70,7 @@ export const LocalSchedulesPanel: React.FC = () => {
       try {
         setRuns(await LocalScheduleService.listRuns(schedule.id));
         setLogs([]);
+        setResults([]);
         setSelectedRun(undefined);
       } catch (error) {
         await RequestErrors.serverError(error as IErrorResponse);
@@ -98,6 +106,7 @@ export const LocalSchedulesPanel: React.FC = () => {
           displayName={selectedSchedule.display_name}
           cronExpression={selectedSchedule.cron_expression}
           enabled={selectedSchedule.enabled}
+          retryPolicy={selectedSchedule.retry_policy}
         />
       ),
       buttons: [Dialog.cancelButton(), Dialog.okButton({ label: 'Save' })]
@@ -108,7 +117,12 @@ export const LocalSchedulesPanel: React.FC = () => {
     try {
       const updated = await LocalScheduleService.updateSchedule(
         selectedSchedule.id,
-        result.value
+        {
+          ...result.value,
+          retry_policy: retryPolicyFromDialog(
+            result.value as unknown as ILocalScheduleDialogValue
+          )
+        }
       );
       window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
       if (updated) {
@@ -155,6 +169,7 @@ export const LocalSchedulesPanel: React.FC = () => {
       setSelectedSchedule(undefined);
       setRuns([]);
       setLogs([]);
+      setResults([]);
       setSelectedRun(undefined);
       window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
     } catch (error) {
@@ -164,12 +179,69 @@ export const LocalSchedulesPanel: React.FC = () => {
 
   const loadLogs = async (run: ILocalScheduledRun): Promise<void> => {
     try {
-      setLogs(await LocalScheduleService.getLogs(run.id));
+      const [nextLogs, nextResults] = await Promise.all([
+        LocalScheduleService.getLogs(run.id),
+        LocalScheduleService.getResults(run.id)
+      ]);
+      setLogs(nextLogs);
+      setResults(nextResults);
       setSelectedRun(run);
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);
     }
   };
+
+  const runNow = async (): Promise<void> => {
+    if (!selectedSchedule) {
+      return;
+    }
+    try {
+      await LocalScheduleService.runNow(selectedSchedule.id);
+      await loadRuns(selectedSchedule);
+    } catch (error) {
+      await RequestErrors.serverError(error as IErrorResponse);
+    }
+  };
+
+  const retryRun = async (): Promise<void> => {
+    if (!selectedRun || !selectedSchedule) {
+      return;
+    }
+    try {
+      await LocalScheduleService.retryRun(selectedRun.id);
+      await loadRuns(selectedSchedule);
+    } catch (error) {
+      await RequestErrors.serverError(error as IErrorResponse);
+    }
+  };
+
+  const stopRun = async (): Promise<void> => {
+    if (!selectedRun || !selectedSchedule) {
+      return;
+    }
+    try {
+      await LocalScheduleService.stopRun(selectedRun.id);
+      await loadRuns(selectedSchedule);
+    } catch (error) {
+      await RequestErrors.serverError(error as IErrorResponse);
+    }
+  };
+
+  const deleteRun = async (): Promise<void> => {
+    if (!selectedRun || !selectedSchedule) {
+      return;
+    }
+    try {
+      await LocalScheduleService.deleteRun(selectedRun.id);
+      await loadRuns(selectedSchedule);
+    } catch (error) {
+      await RequestErrors.serverError(error as IErrorResponse);
+    }
+  };
+
+  const visibleRuns = runs.filter(
+    (run) => statusFilter === 'all' || run.status === statusFilter
+  );
 
   return (
     <div className="elyra-localSchedules">
@@ -204,6 +276,9 @@ export const LocalSchedulesPanel: React.FC = () => {
             <button type="button" onClick={() => void editSchedule()}>
               Edit
             </button>
+            <button type="button" onClick={() => void runNow()}>
+              Run now
+            </button>
             <button type="button" onClick={() => void toggleSchedule()}>
               {selectedSchedule.enabled ? 'Disable' : 'Enable'}
             </button>
@@ -211,13 +286,27 @@ export const LocalSchedulesPanel: React.FC = () => {
               Delete
             </button>
           </div>
-          <h3>Run History</h3>
-          {runs.length === 0 ? <p>No runs recorded.</p> : null}
+          <div className="elyra-localSchedules-runHeader">
+            <h3>Run History</h3>
+            <label>
+              Status
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                <option value="all">All</option>
+                <option value="queued">Queued</option>
+                <option value="running">Running</option>
+                <option value="retrying">Retrying</option>
+                <option value="succeeded">Succeeded</option>
+                <option value="failed">Failed</option>
+                <option value="stopped">Stopped</option>
+              </select>
+            </label>
+          </div>
+          {visibleRuns.length === 0 ? <p>No runs recorded.</p> : null}
           <ul className="elyra-localSchedules-runs">
-            {runs.map((run) => (
+            {visibleRuns.map((run) => (
               <li key={run.id}>
                 <button type="button" onClick={() => void loadLogs(run)}>
-                  {run.status} {formatLocalScheduleTime(run.started_at ?? run.scheduled_at)}
+                  {run.status} · attempt {run.attempt_number} · {formatLocalScheduleTime(run.started_at ?? run.scheduled_at)}
                 </button>
                 {run.error_summary ? <p>{run.error_summary}</p> : null}
               </li>
@@ -237,6 +326,30 @@ export const LocalSchedulesPanel: React.FC = () => {
                     .join('\n')}
                 </pre>
               ) : null}
+              {results.length > 0 ? (
+                <ul className="elyra-localSchedules-results">
+                  {results.map((result) => (
+                    <li key={result.id}>
+                      <a href={result.location} target="_blank" rel="noreferrer">
+                        {result.display_name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="elyra-localSchedules-actions">
+                <button type="button" onClick={() => void retryRun()}>
+                  Retry
+                </button>
+                {selectedRun.status === 'queued' || selectedRun.status === 'running' ? (
+                  <button type="button" onClick={() => void stopRun()}>
+                    Stop
+                  </button>
+                ) : null}
+                <button type="button" onClick={() => void deleteRun()}>
+                  Delete run
+                </button>
+              </div>
             </section>
           ) : null}
         </section>

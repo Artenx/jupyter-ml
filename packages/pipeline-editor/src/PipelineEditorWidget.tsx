@@ -81,7 +81,11 @@ import {
   EmptyPlatformSpecificPipeline
 } from './EmptyPipelineContent';
 import { formDialogWidget } from './formDialogWidget';
-import { LocalScheduleDialog } from './LocalScheduleDialog';
+import {
+  ILocalScheduleDialogValue,
+  LocalScheduleDialog,
+  retryPolicyFromDialog
+} from './LocalScheduleDialog';
 import {
   LocalScheduleService,
   LOCAL_SCHEDULES_CHANGED_EVENT
@@ -1077,7 +1081,10 @@ const PipelineWrapper: React.FC<
         display_name: result.value.display_name,
         pipeline_definition: pipelineJson,
         cron_expression: result.value.cron_expression,
-        enabled: result.value.enabled
+        enabled: result.value.enabled,
+        retry_policy: retryPolicyFromDialog(
+          result.value as unknown as ILocalScheduleDialogValue
+        )
       });
       window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
       toast.success('Local schedule created.');

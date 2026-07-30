@@ -34,14 +34,15 @@ class ScheduleStore:
         self.storage_dir = storage_dir or Path(jupyter_core.paths.jupyter_data_dir()) / "metadata" / "local-schedules"
         self.path = self.storage_dir / "schedules.json"
 
-    def list(self) -> List[LocalSchedule]:
+    def list(self, owner_id: Optional[str] = None) -> List[LocalSchedule]:
         if not self.path.exists():
             return []
         with self.path.open(encoding="utf-8") as file:
-            return [LocalSchedule.from_dict(value) for value in json.load(file)]
+            schedules = [LocalSchedule.from_dict(value) for value in json.load(file)]
+        return [schedule for schedule in schedules if owner_id is None or schedule.owner_id == owner_id]
 
-    def get(self, schedule_id: str) -> Optional[LocalSchedule]:
-        return next((schedule for schedule in self.list() if schedule.id == schedule_id), None)
+    def get(self, schedule_id: str, owner_id: Optional[str] = None) -> Optional[LocalSchedule]:
+        return next((schedule for schedule in self.list(owner_id) if schedule.id == schedule_id), None)
 
     def save(self, schedule: LocalSchedule) -> LocalSchedule:
         schedules = self.list()
@@ -54,9 +55,13 @@ class ScheduleStore:
         self._write(schedules)
         return schedule
 
-    def delete(self, schedule_id: str) -> bool:
+    def delete(self, schedule_id: str, owner_id: Optional[str] = None) -> bool:
         schedules = self.list()
-        remaining = [schedule for schedule in schedules if schedule.id != schedule_id]
+        remaining = [
+            schedule
+            for schedule in schedules
+            if schedule.id != schedule_id or (owner_id is not None and schedule.owner_id != owner_id)
+        ]
         if len(remaining) == len(schedules):
             return False
         self._write(remaining)

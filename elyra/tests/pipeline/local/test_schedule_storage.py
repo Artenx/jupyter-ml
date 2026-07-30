@@ -21,7 +21,9 @@ import pytest
 from elyra.pipeline.local.models import CronExpression
 from elyra.pipeline.local.models import LocalSchedule
 from elyra.pipeline.local.models import LocalScheduledRun
+from elyra.pipeline.local.models import RetryPolicy
 from elyra.pipeline.local.models import RunLogEntry
+from elyra.pipeline.local.models import RunResult
 from elyra.pipeline.local.run_store import RunStore
 from elyra.pipeline.local.schedule_store import ScheduleStore
 
@@ -99,3 +101,96 @@ def test_run_store_prunes_records_over_count_or_age_and_removes_logs(tmp_path):
     assert "expired" not in retained_ids
     assert store.logs("run-100") == []
     assert store.logs("expired") == []
+
+
+def test_schedule_and_run_models_load_historical_data_with_management_defaults():
+    schedule = LocalSchedule.from_dict(
+        {
+            "id": "legacy-schedule",
+            "display_name": "Legacy schedule",
+            "pipeline_definition": {"doc_type": "pipeline"},
+            "cron_expression": "0 2 * * *",
+            "enabled": True,
+            "created_at": "2026-07-29T10:00:00",
+            "updated_at": "2026-07-29T10:00:00",
+        }
+    )
+    run = LocalScheduledRun.from_dict(
+        {
+            "id": "legacy-run",
+            "schedule_id": "legacy-schedule",
+            "status": "succeeded",
+            "scheduled_at": "2026-07-29T10:00:00",
+        }
+    )
+
+    assert schedule.owner_id == "default"
+    assert schedule.retry_policy == RetryPolicy()
+    assert run.owner_id == "default"
+    assert run.trigger_type == "scheduled"
+    assert run.attempt_number == 1
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        {"max_attempts": 0},
+        {"initial_delay_seconds": -1},
+        {"backoff_multiplier": 0.5},
+    ],
+)
+def test_retry_policy_rejects_invalid_values(policy):
+    with pytest.raises(ValueError):
+        RetryPolicy(**policy)
+
+
+def test_schedule_store_filters_and_deletes_only_matching_owner(tmp_path):
+    store = ScheduleStore(tmp_path)
+    owner_schedule = _schedule()
+    owner_schedule.owner_id = "alice"
+    other_schedule = _schedule()
+    other_schedule.id = "other-daily-pipeline"
+    other_schedule.owner_id = "bob"
+    store.save(owner_schedule)
+    store.save(other_schedule)
+
+    assert store.list(owner_id="alice") == [owner_schedule]
+    assert store.get(owner_schedule.id, owner_id="bob") is None
+    assert store.delete(owner_schedule.id, owner_id="bob") is False
+    assert store.get(owner_schedule.id, owner_id="alice") == owner_schedule
+    assert store.delete(owner_schedule.id, owner_id="alice")
+    assert store.list(owner_id="bob") == [other_schedule]
+
+
+def test_run_store_filters_owners_and_persists_results_for_existing_runs(tmp_path):
+    store = RunStore(tmp_path)
+    owner_run = _run("alice-run", datetime(2026, 7, 29, 2, 0))
+    owner_run.owner_id = "alice"
+    other_run = _run("bob-run", datetime(2026, 7, 29, 3, 0))
+    other_run.owner_id = "bob"
+    result = RunResult(
+        id="result-1",
+        run_id=owner_run.id,
+        kind="notebook",
+        location="pipelines/daily.ipynb",
+        display_name="Daily notebook",
+        created_at=datetime(2026, 7, 29, 2, 1),
+    )
+    store.save(owner_run)
+    store.save(other_run)
+
+    assert store.list(owner_id="alice") == [owner_run]
+    assert store.get(owner_run.id, owner_id="bob") is None
+    assert store.save_result(result) == result
+    assert store.list_results(owner_run.id) == [result]
+    with pytest.raises(ValueError, match="must exist"):
+        store.save_result(
+            RunResult(
+                id="missing-result",
+                run_id="missing-run",
+                kind="file",
+                location="output.csv",
+                display_name="Output",
+                created_at=datetime(2026, 7, 29, 2, 2),
+            )
+        )

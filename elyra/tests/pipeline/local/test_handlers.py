@@ -23,10 +23,16 @@ from tornado.testing import AsyncHTTPTestCase
 from tornado.web import Application
 
 from elyra.pipeline.local.handlers import LocalRunLogsHandler
+from elyra.pipeline.local.handlers import LocalRunHandler
+from elyra.pipeline.local.handlers import LocalRunResultsHandler
+from elyra.pipeline.local.handlers import LocalRunRetryHandler
+from elyra.pipeline.local.handlers import LocalRunStopHandler
 from elyra.pipeline.local.handlers import LocalScheduleCollectionHandler
 from elyra.pipeline.local.handlers import LocalScheduleHandler
+from elyra.pipeline.local.handlers import LocalScheduleRunHandler
 from elyra.pipeline.local.handlers import LocalScheduleRunsHandler
 from elyra.pipeline.local.models import LocalScheduledRun
+from elyra.pipeline.local.models import RunResult
 from elyra.pipeline.local.models import RunLogEntry
 from elyra.pipeline.local.scheduler import LocalPipelineScheduler
 from elyra.pipeline.validation import PipelineValidationManager
@@ -69,6 +75,46 @@ class AuthenticatedLocalRunLogsHandler(LocalRunLogsHandler):
         pass
 
 
+class AuthenticatedLocalRunHandler(LocalRunHandler):
+    def get_current_user(self):
+        return "test-user"
+
+    def check_xsrf_cookie(self):
+        pass
+
+
+class AuthenticatedLocalRunRetryHandler(LocalRunRetryHandler):
+    def get_current_user(self):
+        return "test-user"
+
+    def check_xsrf_cookie(self):
+        pass
+
+
+class AuthenticatedLocalRunStopHandler(LocalRunStopHandler):
+    def get_current_user(self):
+        return "test-user"
+
+    def check_xsrf_cookie(self):
+        pass
+
+
+class AuthenticatedLocalRunResultsHandler(LocalRunResultsHandler):
+    def get_current_user(self):
+        return "test-user"
+
+    def check_xsrf_cookie(self):
+        pass
+
+
+class AuthenticatedLocalScheduleRunHandler(LocalScheduleRunHandler):
+    def get_current_user(self):
+        return "test-user"
+
+    def check_xsrf_cookie(self):
+        pass
+
+
 class TestLocalScheduleHandlers(AsyncHTTPTestCase):
     def setUp(self):
         self._storage = tempfile.TemporaryDirectory()
@@ -78,6 +124,7 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
         self.scheduler.run_store.storage_dir = Path(self._storage.name)
         self.scheduler.run_store.path = Path(self._storage.name) / "runs.json"
         self.scheduler.run_store.logs_dir = Path(self._storage.name) / "logs"
+        self.scheduler.run_store.results_path = Path(self._storage.name) / "results.json"
         self.validation_patch = patch.object(PipelineValidationManager, "validate", _valid_pipeline_response)
         self.validation_patch.start()
         super().setUp()
@@ -93,8 +140,13 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
             [
                 (r"/schedules", AuthenticatedLocalScheduleCollectionHandler),
                 (r"/schedules/(?P<schedule_id>[\w.\-]+)/runs", AuthenticatedLocalScheduleRunsHandler),
+                (r"/schedules/(?P<schedule_id>[\w.\-]+)/run", AuthenticatedLocalScheduleRunHandler),
                 (r"/schedules/(?P<schedule_id>[\w.\-]+)", AuthenticatedLocalScheduleHandler),
+                (r"/runs/(?P<run_id>[\w.\-]+)/retry", AuthenticatedLocalRunRetryHandler),
+                (r"/runs/(?P<run_id>[\w.\-]+)/stop", AuthenticatedLocalRunStopHandler),
                 (r"/runs/(?P<run_id>[\w.\-]+)/logs", AuthenticatedLocalRunLogsHandler),
+                (r"/runs/(?P<run_id>[\w.\-]+)/results", AuthenticatedLocalRunResultsHandler),
+                (r"/runs/(?P<run_id>[\w.\-]+)", AuthenticatedLocalRunHandler),
                 (r"/protected/schedules", LocalScheduleCollectionHandler),
             ],
             elyra_local_pipeline_scheduler=self.scheduler,
@@ -138,6 +190,7 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
             scheduled_at=now,
             started_at=now,
             finished_at=now,
+            owner_id="test-user",
         )
         self.scheduler.run_store.save(run)
         self.scheduler.run_store.append_log(run, RunLogEntry(now, "INFO", "Started"))
@@ -147,6 +200,43 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
         response = self.fetch("/runs/completed-run/logs")
         assert [entry["message"] for entry in json.loads(response.body)["logs"]] == ["Started", "Finished"]
         assert self.fetch("/runs/missing-run/logs").code == 404
+
+    def test_run_control_results_and_owner_isolation(self):
+        created = self._create_schedule()
+        now = datetime.now()
+        completed_run = LocalScheduledRun(
+            id="completed-run",
+            schedule_id=created["id"],
+            status="succeeded",
+            scheduled_at=now,
+            owner_id="test-user",
+        )
+        other_run = LocalScheduledRun(
+            id="other-run",
+            schedule_id=created["id"],
+            status="succeeded",
+            scheduled_at=now,
+            owner_id="other-user",
+        )
+        self.scheduler.run_store.save(completed_run)
+        self.scheduler.run_store.save(other_run)
+        self.scheduler.run_store.save_result(
+            RunResult(
+                id="result-1",
+                run_id=completed_run.id,
+                kind="file",
+                location="file:///tmp/a",
+                display_name="output.txt",
+                created_at=now,
+            )
+        )
+
+        assert self.fetch(f"/runs/{completed_run.id}").code == 200
+        assert self.fetch("/runs/other-run").code == 404
+        response = self.fetch(f"/runs/{completed_run.id}/results")
+        assert json.loads(response.body)["results"][0]["id"] == "result-1"
+        assert self.fetch(f"/runs/{completed_run.id}", method="DELETE").code == 204
+        assert self.fetch(f"/runs/{completed_run.id}").code == 404
 
     def test_invalid_cron(self):
         response = self.fetch(

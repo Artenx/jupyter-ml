@@ -15,8 +15,10 @@
 #
 from __future__ import annotations
 
+from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 import threading
 from typing import Callable
@@ -24,6 +26,7 @@ from typing import Optional
 from uuid import uuid4
 
 from elyra.pipeline.local.local_processor import LocalPipelineProcessor
+from elyra.pipeline.local.local_processor import LocalPipelineStoppedError
 from elyra.pipeline.local.models import CronExpression
 from elyra.pipeline.local.models import LocalSchedule
 from elyra.pipeline.local.models import LocalScheduledRun
@@ -51,8 +54,10 @@ class LocalPipelineScheduler:
         self.root_dir = Path(root_dir).expanduser() if root_dir else None
         self.schedule_store = schedule_store or ScheduleStore()
         self.run_store = run_store or RunStore()
-        self._execute_schedule = execute_schedule or self._default_execute_schedule
+        self._execute_schedule = execute_schedule
         self._active_schedule_ids: set[str] = set()
+        self._cancel_events: dict[str, threading.Event] = {}
+        self._futures: dict[str, Future] = {}
         self._lock = threading.Lock()
         self._stopped = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -77,11 +82,14 @@ class LocalPipelineScheduler:
     def recover(self, now: datetime) -> None:
         """Finalize interrupted runs and schedule future triggers from ``now``."""
         for run in self.run_store.list():
-            if run.status == "running":
+            if run.status in {"queued", "running"}:
                 run.status = "failed"
                 run.finished_at = now
                 run.error_summary = "Jupyter Server stopped before the local pipeline completed."
                 self.run_store.save(run, now=now)
+                schedule = self.schedule_store.get(run.schedule_id, owner_id=run.owner_id)
+                if schedule and run.attempt_number < schedule.retry_policy.max_attempts:
+                    self._queue_retry(run, schedule, now)
 
         for schedule in self.schedule_store.list():
             if schedule.enabled:
@@ -115,6 +123,41 @@ class LocalPipelineScheduler:
                 continue
             if schedule.next_run_at <= current_time:
                 self._trigger(schedule, current_time)
+        self._run_due_retries(current_time)
+
+    def run_now(self, schedule_id: str, owner_id: str = "default", now: Optional[datetime] = None) -> LocalScheduledRun:
+        """Submit a user-requested run for a managed local task."""
+        schedule = self.schedule_store.get(schedule_id, owner_id=owner_id)
+        if schedule is None:
+            raise ValueError(f"Local schedule '{schedule_id}' was not found.")
+        return self._submit_run(schedule, "manual", now or datetime.now())
+
+    def retry_run(self, run_id: str, owner_id: str = "default", now: Optional[datetime] = None) -> LocalScheduledRun:
+        """Submit a manual retry that retains the previous run as its parent."""
+        run = self.run_store.get(run_id, owner_id=owner_id)
+        if run is None:
+            raise ValueError(f"Local run '{run_id}' was not found.")
+        schedule = self.schedule_store.get(run.schedule_id, owner_id=owner_id)
+        if schedule is None:
+            raise ValueError(f"Local schedule '{run.schedule_id}' was not found.")
+        return self._submit_run(schedule, "retry", now or datetime.now(), parent_run=run)
+
+    def stop_run(self, run_id: str, owner_id: str = "default") -> bool:
+        """Request cooperative cancellation for a queued or running local pipeline."""
+        run = self.run_store.get(run_id, owner_id=owner_id)
+        if run is None or run.status not in {"queued", "running"}:
+            return False
+        cancel_event = self._cancel_events.get(run_id)
+        if cancel_event:
+            cancel_event.set()
+        future = self._futures.get(run_id)
+        if future and future.cancel():
+            run.status = "stopped"
+            run.finished_at = datetime.now()
+            self.run_store.save(run)
+            with self._lock:
+                self._active_schedule_ids.discard(run.schedule_id)
+        return True
 
     def _run(self) -> None:
         while not self._stopped.is_set():
@@ -123,64 +166,116 @@ class LocalPipelineScheduler:
 
     def _trigger(self, schedule: LocalSchedule, now: datetime) -> None:
         # A handler can disable or remove a schedule after the polling loop loads it.
-        schedule = self.schedule_store.get(schedule.id)
+        schedule = self.schedule_store.get(schedule.id, owner_id=schedule.owner_id)
         if schedule is None or not schedule.enabled:
             return
         schedule.next_run_at = CronExpression(schedule.cron_expression).next_after(now)
         schedule.updated_at = now
         self.schedule_store.save(schedule)
 
+        self._submit_run(schedule, "scheduled", now)
+
+    def _run_due_retries(self, now: datetime) -> None:
+        for run in self.run_store.list():
+            if run.status != "retrying" or run.next_retry_at is None or run.next_retry_at > now:
+                continue
+            schedule = self.schedule_store.get(run.schedule_id, owner_id=run.owner_id)
+            if schedule is None:
+                continue
+            run.next_retry_at = None
+            self.run_store.save(run, now=now)
+            self._submit_run(schedule, "retry", now, parent_run=run)
+
+    def _submit_run(
+        self,
+        schedule: LocalSchedule,
+        trigger_type: str,
+        now: datetime,
+        parent_run: Optional[LocalScheduledRun] = None,
+    ) -> LocalScheduledRun:
         with self._lock:
             if schedule.id in self._active_schedule_ids:
-                self.run_store.save(
-                    LocalScheduledRun(
-                        id=str(uuid4()),
-                        schedule_id=schedule.id,
-                        status="skipped",
-                        scheduled_at=now,
-                        finished_at=now,
-                        error_summary="Skipped because an earlier run is still active.",
-                    ),
-                    now=now,
+                skipped = LocalScheduledRun(
+                    id=str(uuid4()), schedule_id=schedule.id, status="skipped", scheduled_at=now,
+                    finished_at=now, owner_id=schedule.owner_id, trigger_type=trigger_type,
+                    error_summary="Skipped because an earlier run is still active.",
                 )
-                return
+                self.run_store.save(skipped, now=now)
+                return skipped
             self._active_schedule_ids.add(schedule.id)
 
         run_id = str(uuid4())
         run = LocalScheduledRun(
-            id=run_id,
-            schedule_id=schedule.id,
-            status="running",
-            scheduled_at=now,
-            started_at=now,
+            id=run_id, schedule_id=schedule.id, status="queued", scheduled_at=now,
+            owner_id=schedule.owner_id, trigger_type=trigger_type,
+            attempt_number=(parent_run.attempt_number + 1) if parent_run else 1,
+            parent_run_id=parent_run.id if parent_run else None,
             log_path=str(self.run_store.logs_dir / f"{run_id}.jsonl"),
         )
         self.run_store.save(run, now=now)
-        self._executor.submit(self._execute_run, schedule, run)
+        self._cancel_events[run.id] = threading.Event()
+        self._futures[run.id] = self._executor.submit(self._execute_run, schedule, run)
+        return run
 
     def _execute_run(self, schedule: LocalSchedule, run: LocalScheduledRun) -> None:
         def observer(level: str, message: str, operation_name: Optional[str] = None) -> None:
             self.run_store.append_log(run, RunLogEntry(datetime.now(), level, message, operation_name))
 
+        cancel_event = self._cancel_events[run.id]
+        run.status = "running"
+        run.started_at = datetime.now()
+        self.run_store.save(run)
         observer("INFO", "Local scheduled pipeline started.")
         try:
-            self._execute_schedule(schedule, observer)
+            if self._execute_schedule:
+                self._execute_schedule(schedule, observer)
+            else:
+                self._default_execute_schedule(schedule, run, observer, cancel_event)
+        except LocalPipelineStoppedError:
+            observer("INFO", "Local scheduled pipeline stopped.")
+            run.status = "stopped"
         except Exception as exc:
             observer("ERROR", str(exc))
             run.status = "failed"
             run.error_summary = str(exc)
         else:
-            observer("INFO", "Local scheduled pipeline completed.")
-            run.status = "succeeded"
+            if cancel_event.is_set():
+                observer("INFO", "Local scheduled pipeline stopped.")
+                run.status = "stopped"
+            else:
+                observer("INFO", "Local scheduled pipeline completed.")
+                run.status = "succeeded"
         finally:
             run.finished_at = datetime.now()
-            self.run_store.save(run)
             with self._lock:
                 self._active_schedule_ids.discard(schedule.id)
+            if run.status == "failed" and run.attempt_number < schedule.retry_policy.max_attempts:
+                self._queue_retry(run, schedule, run.finished_at)
+            self.run_store.save(run)
+            self._cancel_events.pop(run.id, None)
+            self._futures.pop(run.id, None)
 
-    def _default_execute_schedule(self, schedule: LocalSchedule, observer: RunObserver) -> None:
+    def _queue_retry(self, run: LocalScheduledRun, schedule: LocalSchedule, now: datetime) -> None:
+        delay = schedule.retry_policy.initial_delay_seconds * (
+            schedule.retry_policy.backoff_multiplier ** (run.attempt_number - 1)
+        )
+        run.status = "retrying"
+        run.next_retry_at = now + timedelta(seconds=delay)
+
+    def _default_execute_schedule(
+        self, schedule: LocalSchedule, run: LocalScheduledRun, observer: RunObserver, cancel_event: threading.Event
+    ) -> None:
         pipeline = PipelineParser(root_dir=str(self.root_dir) if self.root_dir else None).parse(schedule.pipeline_definition)
         processor = PipelineProcessorManager.instance().get_processor_for_runtime("local")
         if not isinstance(processor, LocalPipelineProcessor):
             raise RuntimeError("The local pipeline processor is unavailable.")
-        processor.process(pipeline, run_observer=observer)
+        processor.process(
+            pipeline,
+            run_observer=observer,
+            cancel_event=cancel_event,
+            remote_kernel_observer=lambda kernel_id: self._save_remote_kernel_id(run, kernel_id),
+        )
+
+    def _save_remote_kernel_id(self, run: LocalScheduledRun, kernel_id: str) -> None:
+        run.remote_kernel_id = kernel_id
+        self.run_store.save(run)

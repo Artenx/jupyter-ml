@@ -22,6 +22,20 @@ from papermill.utils import merge_kwargs
 from papermill.utils import remove_args
 
 
+class ElyraNotebookClient(PapermillNotebookClient):
+    """Papermill client that reports remote Enterprise Gateway kernel identifiers."""
+
+    def __init__(self, *args, kernel_id_observer=None, **kwargs):
+        self._kernel_id_observer = kernel_id_observer
+        super().__init__(*args, **kwargs)
+
+    async def async_start_new_kernel(self, **kwargs):
+        await super().async_start_new_kernel(**kwargs)
+        kernel_id = getattr(self.km, "kernel_id", None)
+        if kernel_id and self._kernel_id_observer:
+            self._kernel_id_observer(kernel_id)
+
+
 class ElyraEngine(NBClientEngine):
     """
     A notebook engine representing an nbclient process that runs local pipeline notebooks.
@@ -59,6 +73,7 @@ class ElyraEngine(NBClientEngine):
         """
 
         # Exclude parameters that named differently downstream
+        kernel_id_observer = kwargs.pop("kernel_id_observer", None)
         safe_kwargs = remove_args(["timeout", "startup_timeout", "kernel_env", "kernel_cwd", "input_path"], **kwargs)
 
         # Nicely handle preprocessor arguments prioritizing values set by engine
@@ -80,4 +95,4 @@ class ElyraEngine(NBClientEngine):
             kernel_kwargs["kernel_name"] = kernel_name
             kernel_kwargs["path"] = kwargs.get("kernel_cwd")
 
-        return PapermillNotebookClient(nb_man, **final_kwargs).execute(**kernel_kwargs)
+        return ElyraNotebookClient(nb_man, kernel_id_observer=kernel_id_observer, **final_kwargs).execute(**kernel_kwargs)

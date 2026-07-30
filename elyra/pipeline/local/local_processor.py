@@ -26,6 +26,7 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+import threading
 
 from jupyter_server.gateway.managers import GatewayClient
 import papermill
@@ -37,6 +38,10 @@ from elyra.pipeline.processor import PipelineProcessor
 from elyra.pipeline.processor import PipelineProcessorResponse
 from elyra.pipeline.runtime_type import RuntimeProcessorType
 from elyra.util.path import get_absolute_path
+
+
+class LocalPipelineStoppedError(RuntimeError):
+    """Raised when a managed local pipeline receives a stop request."""
 
 
 class LocalPipelineProcessor(PipelineProcessor):
@@ -70,7 +75,13 @@ class LocalPipelineProcessor(PipelineProcessor):
     def get_components(self):
         return ComponentCache.get_generic_components()
 
-    def process(self, pipeline, run_observer: Optional[Callable[[str, str, Optional[str]], None]] = None):
+    def process(
+        self,
+        pipeline,
+        run_observer: Optional[Callable[[str, str, Optional[str]], None]] = None,
+        cancel_event: Optional[threading.Event] = None,
+        remote_kernel_observer: Optional[Callable[[str], None]] = None,
+    ):
         """
         Process a pipeline locally.
         The pipeline execution consists on properly ordering the operations
@@ -97,10 +108,15 @@ class LocalPipelineProcessor(PipelineProcessor):
         for operation in operations:
             assert isinstance(operation, GenericOperation)
             try:
+                if cancel_event and cancel_event.is_set():
+                    raise LocalPipelineStoppedError("Local pipeline stop requested.")
                 t0 = time.time()
                 self._notify(run_observer, "INFO", "Operation started.", operation.name)
                 operation_processor = self._operation_processor_catalog[operation.classifier]
-                operation_processor.process(operation, elyra_run_name)
+                if isinstance(operation_processor, NotebookOperationProcessor):
+                    operation_processor.process(operation, elyra_run_name, remote_kernel_observer)
+                else:
+                    operation_processor.process(operation, elyra_run_name)
                 self.log_pipeline_info(
                     pipeline.name,
                     f"completed {operation.filename}",
@@ -108,6 +124,8 @@ class LocalPipelineProcessor(PipelineProcessor):
                     duration=(time.time() - t0),
                 )
                 self._notify(run_observer, "INFO", "Operation completed.", operation.name)
+            except LocalPipelineStoppedError:
+                raise
             except Exception as ex:
                 self._notify(run_observer, "ERROR", str(ex), operation.name)
                 raise RuntimeError(f"Error processing operation {operation.name} {str(ex)}") from ex
@@ -147,7 +165,12 @@ class OperationProcessor(ABC):
         return self._operation_name
 
     @abstractmethod
-    def process(self, operation: GenericOperation, elyra_run_name: str):
+    def process(
+        self,
+        operation: GenericOperation,
+        elyra_run_name: str,
+        remote_kernel_observer: Optional[Callable[[str], None]] = None,
+    ):
         raise NotImplementedError
 
     @staticmethod
@@ -216,7 +239,12 @@ class FileOperationProcessor(OperationProcessor):
 class NotebookOperationProcessor(FileOperationProcessor):
     _operation_name = "execute-notebook-node"
 
-    def process(self, operation: GenericOperation, elyra_run_name: str):
+    def process(
+        self,
+        operation: GenericOperation,
+        elyra_run_name: str,
+        remote_kernel_observer: Optional[Callable[[str], None]] = None,
+    ):
         filepath = self.get_valid_filepath(operation.filename)
 
         file_dir = os.path.dirname(filepath)
@@ -238,6 +266,7 @@ class NotebookOperationProcessor(FileOperationProcessor):
         additional_kwargs["kernel_env"] = OperationProcessor._collect_envs(operation, elyra_run_name)
         if GatewayClient.instance().gateway_enabled:
             additional_kwargs["kernel_manager_class"] = "jupyter_server.gateway.managers.GatewayKernelManager"
+            additional_kwargs["kernel_id_observer"] = remote_kernel_observer
 
         t0 = time.time()
         try:

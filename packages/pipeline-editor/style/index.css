@@ -140,6 +140,18 @@ body {
   margin: 4px 0 12px;
 }
 
+.elyra-localSchedule-retry {
+  border: 1px solid var(--jp-border-color2);
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 8px;
+}
+
+.elyra-localSchedule-retry input {
+  width: 100%;
+}
+
 .elyra-localSchedules {
   color: var(--jp-ui-font-color1);
   padding: 8px;
@@ -150,6 +162,26 @@ body {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+}
+
+.elyra-localSchedules-runHeader {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.elyra-localSchedules-runHeader h3 {
+  margin: 12px 0 6px;
+}
+
+.elyra-localSchedules-runHeader label {
+  font-size: var(--jp-ui-font-size0);
+}
+
+.elyra-localSchedules-runHeader select {
+  margin-left: 4px;
+  max-width: 95px;
 }
 
 .elyra-localSchedules-list,
@@ -186,6 +218,11 @@ body {
   max-height: 240px;
   overflow: auto;
   white-space: pre-wrap;
+}
+
+.elyra-localSchedules-results {
+  margin: 8px 0;
+  padding-left: 20px;
 }
 
 .properties-control-panel[data-id='properties-nodeGroupInfo']

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import field
 from datetime import datetime
 from datetime import timedelta
 from typing import Any
@@ -116,6 +117,27 @@ class CronExpression:
 
 
 @dataclass
+class RetryPolicy:
+    """Defines automatic retry behavior for a local pipeline task."""
+
+    max_attempts: int = 3
+    initial_delay_seconds: int = 60
+    backoff_multiplier: float = 2
+
+    def __post_init__(self) -> None:
+        if self.max_attempts < 1:
+            raise ValueError("Retry policy max_attempts must be at least 1.")
+        if self.initial_delay_seconds < 0:
+            raise ValueError("Retry policy initial_delay_seconds must be non-negative.")
+        if self.backoff_multiplier < 1:
+            raise ValueError("Retry policy backoff_multiplier must be at least 1.")
+
+    @classmethod
+    def from_dict(cls, value: Optional[Dict[str, Any]]) -> "RetryPolicy":
+        return cls(**value) if value else cls()
+
+
+@dataclass
 class LocalSchedule:
     id: str
     display_name: str
@@ -125,9 +147,13 @@ class LocalSchedule:
     created_at: datetime
     updated_at: datetime
     next_run_at: Optional[datetime] = None
+    owner_id: str = "default"
+    retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
 
     def __post_init__(self) -> None:
         CronExpression(self.cron_expression)
+        if not self.owner_id:
+            raise ValueError("Local schedule owner_id must be non-empty.")
 
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)
@@ -147,6 +173,8 @@ class LocalSchedule:
             created_at=_datetime_from_string(value["created_at"]),
             updated_at=_datetime_from_string(value["updated_at"]),
             next_run_at=_datetime_from_string(value.get("next_run_at")),
+            owner_id=value.get("owner_id", "default"),
+            retry_policy=RetryPolicy.from_dict(value.get("retry_policy")),
         )
 
 
@@ -160,16 +188,38 @@ class LocalScheduledRun:
     finished_at: Optional[datetime] = None
     error_summary: Optional[str] = None
     log_path: Optional[str] = None
+    owner_id: str = "default"
+    trigger_type: str = "scheduled"
+    attempt_number: int = 1
+    parent_run_id: Optional[str] = None
+    remote_kernel_id: Optional[str] = None
+    next_retry_at: Optional[datetime] = None
 
-    VALID_STATUSES: ClassVar[set[str]] = {"scheduled", "running", "succeeded", "failed", "skipped"}
+    VALID_STATUSES: ClassVar[set[str]] = {
+        "queued",
+        "scheduled",
+        "running",
+        "retrying",
+        "succeeded",
+        "failed",
+        "stopped",
+        "skipped",
+    }
+    VALID_TRIGGER_TYPES: ClassVar[set[str]] = {"manual", "scheduled", "retry"}
 
     def __post_init__(self) -> None:
         if self.status not in self.VALID_STATUSES:
             raise ValueError(f"Unsupported local scheduled run status '{self.status}'.")
+        if self.trigger_type not in self.VALID_TRIGGER_TYPES:
+            raise ValueError(f"Unsupported local run trigger type '{self.trigger_type}'.")
+        if self.attempt_number < 1:
+            raise ValueError("Local scheduled run attempt_number must be at least 1.")
+        if not self.owner_id:
+            raise ValueError("Local scheduled run owner_id must be non-empty.")
 
     def to_dict(self) -> Dict[str, Any]:
         result = asdict(self)
-        for key in ("scheduled_at", "started_at", "finished_at"):
+        for key in ("scheduled_at", "started_at", "finished_at", "next_retry_at"):
             result[key] = _datetime_to_string(result[key])
         return result
 
@@ -184,6 +234,52 @@ class LocalScheduledRun:
             finished_at=_datetime_from_string(value.get("finished_at")),
             error_summary=value.get("error_summary"),
             log_path=value.get("log_path"),
+            owner_id=value.get("owner_id", "default"),
+            trigger_type=value.get("trigger_type", "scheduled"),
+            attempt_number=value.get("attempt_number", 1),
+            parent_run_id=value.get("parent_run_id"),
+            remote_kernel_id=value.get("remote_kernel_id"),
+            next_retry_at=_datetime_from_string(value.get("next_retry_at")),
+        )
+
+
+@dataclass
+class RunResult:
+    """Describes an output produced by a local pipeline run."""
+
+    id: str
+    run_id: str
+    kind: str
+    location: str
+    display_name: str
+    created_at: datetime
+    operation_name: Optional[str] = None
+
+    VALID_KINDS: ClassVar[set[str]] = {"notebook", "file", "remote_kernel", "link"}
+
+    def __post_init__(self) -> None:
+        if self.kind not in self.VALID_KINDS:
+            raise ValueError(f"Unsupported run result kind '{self.kind}'.")
+        if not self.location:
+            raise ValueError("Run result location must be non-empty.")
+        if not self.display_name:
+            raise ValueError("Run result display_name must be non-empty.")
+
+    def to_dict(self) -> Dict[str, Any]:
+        result = asdict(self)
+        result["created_at"] = _datetime_to_string(self.created_at)
+        return result
+
+    @classmethod
+    def from_dict(cls, value: Dict[str, Any]) -> "RunResult":
+        return cls(
+            id=value["id"],
+            run_id=value["run_id"],
+            kind=value["kind"],
+            location=value["location"],
+            display_name=value["display_name"],
+            created_at=_datetime_from_string(value["created_at"]),
+            operation_name=value.get("operation_name"),
         )
 
 

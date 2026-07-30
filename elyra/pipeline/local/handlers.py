@@ -27,6 +27,7 @@ from tornado import web
 from elyra.pipeline.local.models import CronExpression
 from elyra.pipeline.local.models import LocalSchedule
 from elyra.pipeline.local.models import LocalScheduledRun
+from elyra.pipeline.local.models import RetryPolicy
 from elyra.pipeline.local.scheduler import LocalPipelineScheduler
 from elyra.pipeline.validation import PipelineValidationManager
 
@@ -37,6 +38,14 @@ class LocalScheduleBaseHandler(APIHandler):
     @property
     def scheduler(self) -> LocalPipelineScheduler:
         return self.settings["elyra_local_pipeline_scheduler"]
+
+    @property
+    def owner_id(self) -> str:
+        """Return a stable identifier for the authenticated Jupyter user."""
+        user = self.current_user
+        if isinstance(user, dict):
+            return str(user.get("name") or user.get("username"))
+        return str(getattr(user, "username", user))
 
     async def _validate_pipeline(self, pipeline_definition: Dict[str, Any]) -> None:
         response = await PipelineValidationManager.instance().validate(pipeline_definition)
@@ -69,8 +78,14 @@ class LocalScheduleBaseHandler(APIHandler):
             raise web.HTTPError(400, reason="pipeline_definition must be an object.")
         if not isinstance(enabled, bool):
             raise web.HTTPError(400, reason="enabled must be a boolean.")
+        retry_policy_value = payload.get("retry_policy", current.retry_policy if current else None)
+        if retry_policy_value is not None and not isinstance(retry_policy_value, (dict, RetryPolicy)):
+            raise web.HTTPError(400, reason="retry_policy must be an object.")
         try:
             CronExpression(cron_expression)
+            retry_policy = (
+                retry_policy_value if isinstance(retry_policy_value, RetryPolicy) else RetryPolicy.from_dict(retry_policy_value)
+            )
         except (TypeError, ValueError) as exc:
             raise web.HTTPError(400, reason=str(exc)) from exc
 
@@ -84,6 +99,8 @@ class LocalScheduleBaseHandler(APIHandler):
             created_at=current.created_at if current else now,
             updated_at=now,
             next_run_at=current.next_run_at if current else None,
+            owner_id=current.owner_id if current else self.owner_id,
+            retry_policy=retry_policy,
         )
 
 
@@ -92,7 +109,8 @@ class LocalScheduleCollectionHandler(LocalScheduleBaseHandler):
 
     @web.authenticated
     async def get(self) -> None:
-        self.finish({"schedules": [schedule.to_dict() for schedule in self.scheduler.schedule_store.list()]})
+        schedules = self.scheduler.schedule_store.list(owner_id=self.owner_id)
+        self.finish({"schedules": [schedule.to_dict() for schedule in schedules]})
 
     @web.authenticated
     async def post(self) -> None:
@@ -110,7 +128,7 @@ class LocalScheduleHandler(LocalScheduleBaseHandler):
     """Read, update, and delete one local pipeline schedule."""
 
     def _get_schedule(self, schedule_id: str) -> LocalSchedule:
-        schedule = self.scheduler.schedule_store.get(schedule_id)
+        schedule = self.scheduler.schedule_store.get(schedule_id, owner_id=self.owner_id)
         if schedule is None:
             raise web.HTTPError(404, reason=f"Local schedule '{schedule_id}' was not found.")
         return schedule
@@ -132,7 +150,7 @@ class LocalScheduleHandler(LocalScheduleBaseHandler):
     @web.authenticated
     async def delete(self, schedule_id: str) -> None:
         self._get_schedule(schedule_id)
-        self.scheduler.delete_schedule(schedule_id)
+        self.scheduler.schedule_store.delete(schedule_id, owner_id=self.owner_id)
         self.set_status(204)
         self.finish()
 
@@ -142,9 +160,9 @@ class LocalScheduleRunsHandler(LocalScheduleBaseHandler):
 
     @web.authenticated
     async def get(self, schedule_id: str) -> None:
-        if self.scheduler.schedule_store.get(schedule_id) is None:
+        if self.scheduler.schedule_store.get(schedule_id, owner_id=self.owner_id) is None:
             raise web.HTTPError(404, reason=f"Local schedule '{schedule_id}' was not found.")
-        runs = self._filter_runs(self.scheduler.run_store.list(schedule_id))
+        runs = self._filter_runs(self.scheduler.run_store.list(schedule_id, owner_id=self.owner_id))
         self.finish({"runs": [run.to_dict() for run in runs]})
 
     def _filter_runs(self, runs: List[LocalScheduledRun]) -> List[LocalScheduledRun]:
@@ -172,6 +190,76 @@ class LocalRunLogsHandler(LocalScheduleBaseHandler):
 
     @web.authenticated
     async def get(self, run_id: str) -> None:
-        if self.scheduler.run_store.get(run_id) is None:
+        if self.scheduler.run_store.get(run_id, owner_id=self.owner_id) is None:
             raise web.HTTPError(404, reason=f"Local scheduled run '{run_id}' was not found.")
         self.finish({"logs": [entry.to_dict() for entry in self.scheduler.run_store.logs(run_id)]})
+
+
+class LocalScheduleRunHandler(LocalScheduleBaseHandler):
+    """Start an owned local schedule immediately."""
+
+    @web.authenticated
+    async def post(self, schedule_id: str) -> None:
+        try:
+            run = self.scheduler.run_now(schedule_id, owner_id=self.owner_id)
+        except ValueError as exc:
+            raise web.HTTPError(404, reason=str(exc)) from exc
+        self.set_status(202)
+        self.finish(run.to_dict())
+
+
+class LocalRunHandler(LocalScheduleBaseHandler):
+    """Read or delete one owned local pipeline run."""
+
+    def _get_run(self, run_id: str) -> LocalScheduledRun:
+        run = self.scheduler.run_store.get(run_id, owner_id=self.owner_id)
+        if run is None:
+            raise web.HTTPError(404, reason=f"Local scheduled run '{run_id}' was not found.")
+        return run
+
+    @web.authenticated
+    async def get(self, run_id: str) -> None:
+        self.finish(self._get_run(run_id).to_dict())
+
+    @web.authenticated
+    async def delete(self, run_id: str) -> None:
+        self._get_run(run_id)
+        self.scheduler.run_store.delete(run_id, owner_id=self.owner_id)
+        self.set_status(204)
+        self.finish()
+
+
+class LocalRunRetryHandler(LocalScheduleBaseHandler):
+    """Start a user-requested retry for an owned local pipeline run."""
+
+    @web.authenticated
+    async def post(self, run_id: str) -> None:
+        try:
+            run = self.scheduler.retry_run(run_id, owner_id=self.owner_id)
+        except ValueError as exc:
+            raise web.HTTPError(404, reason=str(exc)) from exc
+        self.set_status(202)
+        self.finish(run.to_dict())
+
+
+class LocalRunStopHandler(LocalScheduleBaseHandler):
+    """Request a cooperative stop for an owned active local pipeline run."""
+
+    @web.authenticated
+    async def post(self, run_id: str) -> None:
+        if self.scheduler.run_store.get(run_id, owner_id=self.owner_id) is None:
+            raise web.HTTPError(404, reason=f"Local scheduled run '{run_id}' was not found.")
+        if not self.scheduler.stop_run(run_id, owner_id=self.owner_id):
+            raise web.HTTPError(409, reason="Local scheduled run is no longer active.")
+        self.set_status(202)
+        self.finish()
+
+
+class LocalRunResultsHandler(LocalScheduleBaseHandler):
+    """Return output metadata for one owned local pipeline run."""
+
+    @web.authenticated
+    async def get(self, run_id: str) -> None:
+        if self.scheduler.run_store.get(run_id, owner_id=self.owner_id) is None:
+            raise web.HTTPError(404, reason=f"Local scheduled run '{run_id}' was not found.")
+        self.finish({"results": [result.to_dict() for result in self.scheduler.run_store.list_results(run_id)]})

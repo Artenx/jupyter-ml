@@ -26,17 +26,37 @@ export interface ILocalSchedule {
   created_at: string;
   updated_at: string;
   next_run_at: string | null;
+  retry_policy: ILocalRetryPolicy;
+}
+
+export interface ILocalRetryPolicy {
+  max_attempts: number;
+  initial_delay_seconds: number;
+  backoff_multiplier: number;
 }
 
 export interface ILocalScheduledRun {
   id: string;
   schedule_id: string;
-  status: 'scheduled' | 'running' | 'succeeded' | 'failed' | 'skipped';
+  status:
+    | 'queued'
+    | 'scheduled'
+    | 'running'
+    | 'retrying'
+    | 'succeeded'
+    | 'failed'
+    | 'stopped'
+    | 'skipped';
   scheduled_at: string;
   started_at: string | null;
   finished_at: string | null;
   error_summary: string | null;
   log_path: string | null;
+  trigger_type: 'manual' | 'scheduled' | 'retry';
+  attempt_number: number;
+  parent_run_id: string | null;
+  remote_kernel_id: string | null;
+  next_retry_at: string | null;
 }
 
 export interface ILocalRunLogEntry {
@@ -51,6 +71,15 @@ export interface ILocalSchedulePayload {
   pipeline_definition: GenericObjectType;
   cron_expression: string;
   enabled: boolean;
+  retry_policy?: ILocalRetryPolicy;
+}
+
+export interface ILocalRunResult {
+  id: string;
+  kind: 'notebook' | 'file' | 'remote_kernel' | 'link';
+  location: string;
+  display_name: string;
+  operation_name: string | null;
 }
 
 interface ILocalSchedulesResponse {
@@ -63,6 +92,10 @@ interface ILocalRunsResponse {
 
 interface ILocalRunLogsResponse {
   logs: ILocalRunLogEntry[];
+}
+
+interface ILocalRunResultsResponse {
+  results: ILocalRunResult[];
 }
 
 const SCHEDULES_PATH = 'elyra/pipeline/local/schedules';
@@ -116,5 +149,39 @@ export class LocalScheduleService {
       `elyra/pipeline/local/runs/${encodeURIComponent(runId)}/logs`
     );
     return response?.logs ?? [];
+  }
+
+  static async runNow(scheduleId: string): Promise<ILocalScheduledRun | undefined> {
+    return RequestHandler.makePostRequest<ILocalScheduledRun>(
+      `${SCHEDULES_PATH}/${encodeURIComponent(scheduleId)}/run`,
+      '{}'
+    );
+  }
+
+  static async retryRun(runId: string): Promise<ILocalScheduledRun | undefined> {
+    return RequestHandler.makePostRequest<ILocalScheduledRun>(
+      `elyra/pipeline/local/runs/${encodeURIComponent(runId)}/retry`,
+      '{}'
+    );
+  }
+
+  static async stopRun(runId: string): Promise<void> {
+    await RequestHandler.makePostRequest(
+      `elyra/pipeline/local/runs/${encodeURIComponent(runId)}/stop`,
+      '{}'
+    );
+  }
+
+  static async deleteRun(runId: string): Promise<void> {
+    await RequestHandler.makeDeleteRequest(
+      `elyra/pipeline/local/runs/${encodeURIComponent(runId)}`
+    );
+  }
+
+  static async getResults(runId: string): Promise<ILocalRunResult[]> {
+    const response = await RequestHandler.makeGetRequest<ILocalRunResultsResponse>(
+      `elyra/pipeline/local/runs/${encodeURIComponent(runId)}/results`
+    );
+    return response?.results ?? [];
   }
 }

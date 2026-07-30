@@ -92,6 +92,46 @@ describe('@elyra/pipeline-editor', () => {
         'elyra/pipeline/local/schedules/daily%2Fschedule'
       );
     });
+
+    it('controls runs and reads results through encoded task endpoints', async () => {
+      const postRequest = jest
+        .spyOn(RequestHandler, 'makePostRequest')
+        .mockResolvedValue({ id: 'run/one' } as never);
+      const getRequest = jest
+        .spyOn(RequestHandler, 'makeGetRequest')
+        .mockResolvedValue({ results: [{ id: 'result-1' }] } as never);
+      const deleteRequest = jest
+        .spyOn(RequestHandler, 'makeDeleteRequest')
+        .mockResolvedValue(undefined);
+
+      await LocalScheduleService.runNow('daily/schedule');
+      await LocalScheduleService.retryRun('run/one');
+      await LocalScheduleService.stopRun('run/one');
+      await LocalScheduleService.getResults('run/one');
+      await LocalScheduleService.deleteRun('run/one');
+
+      expect(postRequest).toHaveBeenNthCalledWith(
+        1,
+        'elyra/pipeline/local/schedules/daily%2Fschedule/run',
+        '{}'
+      );
+      expect(postRequest).toHaveBeenNthCalledWith(
+        2,
+        'elyra/pipeline/local/runs/run%2Fone/retry',
+        '{}'
+      );
+      expect(postRequest).toHaveBeenNthCalledWith(
+        3,
+        'elyra/pipeline/local/runs/run%2Fone/stop',
+        '{}'
+      );
+      expect(getRequest).toHaveBeenCalledWith(
+        'elyra/pipeline/local/runs/run%2Fone/results'
+      );
+      expect(deleteRequest).toHaveBeenCalledWith(
+        'elyra/pipeline/local/runs/run%2Fone'
+      );
+    });
   });
 
   describe('LocalSchedulesPanel', () => {
@@ -108,7 +148,12 @@ describe('@elyra/pipeline-editor', () => {
         enabled: true,
         created_at: '2026-07-29T09:00:00',
         updated_at: '2026-07-29T09:00:00',
-        next_run_at: null
+        next_run_at: null,
+        retry_policy: {
+          max_attempts: 3,
+          initial_delay_seconds: 60,
+          backoff_multiplier: 2
+        }
       };
       jest
         .spyOn(LocalScheduleService, 'listSchedules')
@@ -122,7 +167,12 @@ describe('@elyra/pipeline-editor', () => {
           started_at: '2026-07-29T09:00:00',
           finished_at: '2026-07-29T09:01:00',
           error_summary: null,
-          log_path: null
+          log_path: null,
+          trigger_type: 'scheduled',
+          attempt_number: 1,
+          parent_run_id: null,
+          remote_kernel_id: null,
+          next_retry_at: null
         }
       ]);
       const container = document.createElement('div');

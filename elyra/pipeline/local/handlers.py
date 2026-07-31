@@ -185,6 +185,15 @@ class LocalScheduleRunsHandler(LocalScheduleBaseHandler):
         ]
 
 
+class LocalDirectRunsHandler(LocalScheduleBaseHandler):
+    """Query persisted local pipeline runs started outside a schedule."""
+
+    @web.authenticated
+    async def get(self) -> None:
+        runs = self.scheduler.run_store.list(owner_id=self.owner_id, direct_only=True)
+        self.finish({"runs": [run.to_dict() for run in runs]})
+
+
 class LocalRunLogsHandler(LocalScheduleBaseHandler):
     """Return structured logs for one local scheduled run."""
 

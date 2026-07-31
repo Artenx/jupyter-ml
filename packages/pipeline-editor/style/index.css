@@ -164,6 +164,10 @@ body {
   justify-content: flex-end;
 }
 
+.elyra-localSchedules-header {
+  justify-content: space-between;
+}
+
 .elyra-localSchedules-runHeader {
   align-items: center;
   display: flex;

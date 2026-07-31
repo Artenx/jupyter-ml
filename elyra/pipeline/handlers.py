@@ -133,6 +133,14 @@ class PipelineExportHandler(HttpErrorMixin, APIHandler):
 class PipelineSchedulerHandler(HttpErrorMixin, APIHandler):
     """Handler to expose method calls to execute pipelines as batch jobs"""
 
+    @property
+    def owner_id(self) -> str:
+        """Return a stable identifier for the authenticated Jupyter user."""
+        user = self.current_user
+        if isinstance(user, dict):
+            return str(user.get("name") or user.get("username"))
+        return str(getattr(user, "username", user))
+
     @web.authenticated
     async def get(self):
         msg_json = dict(title="Operation not supported.")
@@ -156,9 +164,19 @@ class PipelineSchedulerHandler(HttpErrorMixin, APIHandler):
             pipeline = PipelineParser(root_dir=self.settings["server_root_dir"], parent=parent).parse(
                 pipeline_definition
             )
-            response = await PipelineProcessorManager.instance().process(pipeline)
-            json_msg = json.dumps(response.to_json())
-            self.set_status(200)
+            if pipeline.runtime == "local":
+                scheduler = self.settings["elyra_local_pipeline_scheduler"]
+                run = scheduler.submit_direct(
+                    pipeline_definition=pipeline_definition,
+                    owner_id=self.owner_id,
+                    name=pipeline.name,
+                )
+                json_msg = json.dumps(run.to_dict())
+                self.set_status(202)
+            else:
+                response = await PipelineProcessorManager.instance().process(pipeline)
+                json_msg = json.dumps(response.to_json())
+                self.set_status(200)
         else:
             json_msg = json.dumps(
                 {

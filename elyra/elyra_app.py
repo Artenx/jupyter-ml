@@ -58,6 +58,7 @@ from elyra.pipeline.local.handlers import LocalRunHandler
 from elyra.pipeline.local.handlers import LocalRunResultsHandler
 from elyra.pipeline.local.handlers import LocalRunRetryHandler
 from elyra.pipeline.local.handlers import LocalRunStopHandler
+from elyra.pipeline.local.handlers import LocalDirectRunsHandler
 from elyra.pipeline.local.handlers import LocalScheduleCollectionHandler
 from elyra.pipeline.local.handlers import LocalScheduleHandler
 from elyra.pipeline.local.handlers import LocalScheduleRunHandler
@@ -159,6 +160,7 @@ class ElyraApp(ExtensionAppJinjaMixin, ExtensionApp):
                 (f"/{self.name}/pipeline/local/schedules/{schedule_id_regex}/runs", LocalScheduleRunsHandler),
                 (f"/{self.name}/pipeline/local/schedules/{schedule_id_regex}/run", LocalScheduleRunHandler),
                 (f"/{self.name}/pipeline/local/schedules/{schedule_id_regex}", LocalScheduleHandler),
+                (f"/{self.name}/pipeline/local/runs", LocalDirectRunsHandler),
                 (f"/{self.name}/pipeline/local/runs/{run_id_regex}/retry", LocalRunRetryHandler),
                 (f"/{self.name}/pipeline/local/runs/{run_id_regex}/stop", LocalRunStopHandler),
                 (f"/{self.name}/pipeline/local/runs/{run_id_regex}/logs", LocalRunLogsHandler),

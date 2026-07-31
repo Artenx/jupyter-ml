@@ -15,15 +15,16 @@
  */
 
 import { RequestHandler } from '@elyra/services';
+import * as React from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import * as React from 'react';
 
+import { LocalScheduleService } from '../LocalScheduleService';
 import {
   formatLocalScheduleTime,
+  LocalRunLogWidget,
   LocalSchedulesPanel
 } from '../LocalSchedulesWidget';
-import { LocalScheduleService } from '../LocalScheduleService';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -43,6 +44,17 @@ describe('@elyra/pipeline-editor', () => {
         { id: 'weekday' }
       ]);
       expect(getRequest).toHaveBeenCalledWith('elyra/pipeline/local/schedules');
+    });
+
+    it('lists direct runs separately from scheduled runs', async () => {
+      const getRequest = jest
+        .spyOn(RequestHandler, 'makeGetRequest')
+        .mockResolvedValue({ runs: [{ id: 'direct-run' }] } as never);
+
+      await expect(LocalScheduleService.listDirectRuns()).resolves.toEqual([
+        { id: 'direct-run' }
+      ]);
+      expect(getRequest).toHaveBeenCalledWith('elyra/pipeline/local/runs');
     });
 
     it('creates a schedule with its pipeline definition', async () => {
@@ -139,6 +151,34 @@ describe('@elyra/pipeline-editor', () => {
       expect(formatLocalScheduleTime(null)).toBe('Not scheduled');
     });
 
+    it('shows a create entry and calls onCreate from the sidebar header', async () => {
+      jest.spyOn(LocalScheduleService, 'listSchedules').mockResolvedValue([]);
+      const onCreate = jest.fn(async (): Promise<void> => undefined);
+      const container = document.createElement('div');
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(React.createElement(LocalSchedulesPanel, { onCreate }));
+      });
+      expect(container.textContent).toContain('No local schedules.');
+      const createButton = Array.from(
+        container.querySelectorAll('button')
+      ).find((button) =>
+        button.textContent?.includes('Create Local Schedule')
+      );
+      expect(createButton).toBeDefined();
+
+      await act(async () => {
+        createButton?.dispatchEvent(
+          new MouseEvent('click', { bubbles: true })
+        );
+      });
+      expect(onCreate).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        root.unmount();
+      });
+    });
+
     it('shows a selected schedule and its run history', async () => {
       const schedule = {
         id: 'weekday',
@@ -196,6 +236,82 @@ describe('@elyra/pipeline-editor', () => {
       expect(container.textContent).toContain('succeeded');
       await act(async () => {
         root.unmount();
+      });
+    });
+
+    it('lists direct runs and reveals an Enterprise Gateway run log widget', async () => {
+      jest.spyOn(LocalScheduleService, 'listSchedules').mockResolvedValue([]);
+      jest.spyOn(LocalScheduleService, 'listDirectRuns').mockResolvedValue([
+        {
+          id: 'direct-run',
+          schedule_id: null,
+          status: 'running',
+          scheduled_at: '2026-07-31T09:00:00',
+          started_at: '2026-07-31T09:00:00',
+          finished_at: null,
+          error_summary: null,
+          log_path: null,
+          trigger_type: 'direct',
+          attempt_number: 1,
+          parent_run_id: null,
+          remote_kernel_id: 'gateway-kernel-1',
+          next_retry_at: null
+        }
+      ]);
+      jest.spyOn(LocalScheduleService, 'getLogs').mockResolvedValue([
+        {
+          timestamp: '2026-07-31T09:00:00',
+          level: 'INFO',
+          message: 'Started on gateway',
+          operation_name: null
+        }
+      ]);
+      jest.spyOn(LocalScheduleService, 'getResults').mockResolvedValue([]);
+
+      const onOpenLogs = jest.fn();
+      const container = document.createElement('div');
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(
+          React.createElement(LocalSchedulesPanel, { onOpenLogs })
+        );
+      });
+
+      const directButton = Array.from(
+        container.querySelectorAll('button')
+      ).find((button) => button.textContent?.includes('Direct Runs'));
+      expect(directButton).toBeDefined();
+
+      await act(async () => {
+        directButton?.dispatchEvent(
+          new MouseEvent('click', { bubbles: true })
+        );
+      });
+
+      return act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        const runButton = Array.from(
+          container.querySelectorAll('button')
+        ).find((button) => button.textContent?.includes('direct-run'));
+        runButton?.dispatchEvent(
+          new MouseEvent('click', { bubbles: true })
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }).then(() => {
+        expect(onOpenLogs).toHaveBeenCalledTimes(1);
+        expect(container.textContent).toContain('gateway-kernel-1');
+
+        const run = { id: 'direct-run' } as never;
+        const logWidget = new LocalRunLogWidget(run, [
+          {
+            timestamp: '2026-07-31T09:00:00',
+            level: 'INFO',
+            message: 'Started on gateway',
+            operation_name: null
+          }
+        ]);
+        expect(logWidget.node.textContent).toContain('Started on gateway');
       });
     });
   });

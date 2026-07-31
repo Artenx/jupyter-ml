@@ -44,13 +44,20 @@ class RunStore:
         self.logs_dir = self.storage_dir / "logs"
         self.results_path = self.storage_dir / "results.json"
 
-    def list(self, schedule_id: Optional[str] = None, owner_id: Optional[str] = None) -> List[LocalScheduledRun]:
+    def list(
+        self,
+        schedule_id: Optional[str] = None,
+        owner_id: Optional[str] = None,
+        direct_only: bool = False,
+    ) -> List[LocalScheduledRun]:
         if not self.path.exists():
             return []
         with self.path.open(encoding="utf-8") as file:
             runs = [LocalScheduledRun.from_dict(value) for value in json.load(file)]
         if schedule_id:
             runs = [run for run in runs if run.schedule_id == schedule_id]
+        if direct_only:
+            runs = [run for run in runs if run.schedule_id is None]
         if owner_id:
             runs = [run for run in runs if run.owner_id == owner_id]
         return sorted(runs, key=lambda run: run.scheduled_at, reverse=True)

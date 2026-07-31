@@ -27,6 +27,7 @@ from elyra.pipeline.local.handlers import LocalRunHandler
 from elyra.pipeline.local.handlers import LocalRunResultsHandler
 from elyra.pipeline.local.handlers import LocalRunRetryHandler
 from elyra.pipeline.local.handlers import LocalRunStopHandler
+from elyra.pipeline.local.handlers import LocalDirectRunsHandler
 from elyra.pipeline.local.handlers import LocalScheduleCollectionHandler
 from elyra.pipeline.local.handlers import LocalScheduleHandler
 from elyra.pipeline.local.handlers import LocalScheduleRunHandler
@@ -60,6 +61,14 @@ class AuthenticatedLocalScheduleHandler(LocalScheduleHandler):
 
 
 class AuthenticatedLocalScheduleRunsHandler(LocalScheduleRunsHandler):
+    def get_current_user(self):
+        return "test-user"
+
+    def check_xsrf_cookie(self):
+        pass
+
+
+class AuthenticatedLocalDirectRunsHandler(LocalDirectRunsHandler):
     def get_current_user(self):
         return "test-user"
 
@@ -142,6 +151,7 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
                 (r"/schedules/(?P<schedule_id>[\w.\-]+)/runs", AuthenticatedLocalScheduleRunsHandler),
                 (r"/schedules/(?P<schedule_id>[\w.\-]+)/run", AuthenticatedLocalScheduleRunHandler),
                 (r"/schedules/(?P<schedule_id>[\w.\-]+)", AuthenticatedLocalScheduleHandler),
+                (r"/runs", AuthenticatedLocalDirectRunsHandler),
                 (r"/runs/(?P<run_id>[\w.\-]+)/retry", AuthenticatedLocalRunRetryHandler),
                 (r"/runs/(?P<run_id>[\w.\-]+)/stop", AuthenticatedLocalRunStopHandler),
                 (r"/runs/(?P<run_id>[\w.\-]+)/logs", AuthenticatedLocalRunLogsHandler),
@@ -237,6 +247,33 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
         assert json.loads(response.body)["results"][0]["id"] == "result-1"
         assert self.fetch(f"/runs/{completed_run.id}", method="DELETE").code == 204
         assert self.fetch(f"/runs/{completed_run.id}").code == 404
+
+    def test_direct_runs_are_listed_separately_from_schedule_runs(self):
+        now = datetime.now()
+        created = self._create_schedule()
+        scheduled_run = LocalScheduledRun(
+            id="scheduled-run",
+            schedule_id=created["id"],
+            status="succeeded",
+            scheduled_at=now,
+            owner_id="test-user",
+        )
+        direct_run = LocalScheduledRun(
+            id="direct-run",
+            schedule_id=None,
+            status="succeeded",
+            scheduled_at=now,
+            owner_id="test-user",
+            trigger_type="direct",
+        )
+        self.scheduler.run_store.save(scheduled_run)
+        self.scheduler.run_store.save(direct_run)
+
+        response = self.fetch("/runs")
+        direct_runs = json.loads(response.body)["runs"]
+        assert [item["id"] for item in direct_runs] == ["direct-run"]
+        assert direct_runs[0]["trigger_type"] == "direct"
+        assert direct_runs[0]["schedule_id"] is None
 
     def test_invalid_cron(self):
         response = self.fetch(

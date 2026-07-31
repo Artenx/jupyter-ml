@@ -21,7 +21,8 @@ import {
   pipelineIcon,
   RequestErrors,
   runtimesIcon,
-  componentCatalogIcon
+  componentCatalogIcon,
+  GenericObjectType
 } from '@elyra/ui-components';
 
 import {
@@ -29,7 +30,12 @@ import {
   JupyterFrontEndPlugin,
   ILayoutRestorer
 } from '@jupyterlab/application';
-import { ICommandPalette, WidgetTracker } from '@jupyterlab/apputils';
+import {
+  Dialog,
+  ICommandPalette,
+  WidgetTracker,
+  showDialog
+} from '@jupyterlab/apputils';
 import { DocumentWidget } from '@jupyterlab/docregistry';
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ILauncher } from '@jupyterlab/launcher';
@@ -48,11 +54,13 @@ import {
   COMPONENT_CATALOGS_SCHEMASPACE,
   ComponentCatalogsWidget
 } from './ComponentCatalogsWidget';
-import { PipelineEditorFactory, commandIDs } from './PipelineEditorWidget';
 import {
+  LocalRunLogWidget,
   LocalSchedulesWidget,
-  LOCAL_SCHEDULES_WIDGET_ID
+  LOCAL_SCHEDULES_WIDGET_ID,
+  promptCreateLocalSchedule
 } from './LocalSchedulesWidget';
+import { PipelineEditorFactory, commandIDs } from './PipelineEditorWidget';
 import {
   IRuntimeType,
   PipelineService,
@@ -155,6 +163,10 @@ const extension: JupyterFrontEndPlugin<void> = {
       return undefined;
     });
 
+    const tracker = new WidgetTracker<DocumentWidget>({
+      namespace: PIPELINE_EDITOR_NAMESPACE
+    });
+
     PipelineService.getRuntimeTypes()
       .then(async (types) => {
         const filteredTypes = types.filter((t) => t.runtime_enabled);
@@ -196,10 +208,6 @@ const extension: JupyterFrontEndPlugin<void> = {
           ['JSON']
         );
         app.docRegistry.addWidgetFactory(pipelineEditorFactory);
-
-        const tracker = new WidgetTracker<DocumentWidget>({
-          namespace: PIPELINE_EDITOR_NAMESPACE
-        });
 
         pipelineEditorFactory.widgetCreated.connect((_sender, widget) => {
           void tracker.add(widget);
@@ -412,7 +420,61 @@ const extension: JupyterFrontEndPlugin<void> = {
       rank: -0.5
     });
 
-    const localSchedulesWidget = new LocalSchedulesWidget();
+    const createLocalScheduleFromActiveEditor = async (): Promise<void> => {
+      const widget = tracker.currentWidget;
+      if (!widget) {
+        await showDialog({
+          title: 'Create Local Schedule',
+          body: 'Open a pipeline in the Pipeline Editor first, then create a local schedule from here.',
+          buttons: [Dialog.okButton()]
+        });
+        return;
+      }
+      const pipelineJson = widget.context.model.toJSON() as GenericObjectType;
+      const primaryPipeline =
+        pipelineJson?.pipelines?.[0] ?? ({} as GenericObjectType);
+      const nodes = primaryPipeline?.nodes as unknown[];
+      const runtimeType = (primaryPipeline?.app_data as GenericObjectType)
+        ?.runtime_type;
+      if (!Array.isArray(nodes) || nodes.length === 0) {
+        await showDialog({
+          title: 'Create Local Schedule',
+          body: 'The active pipeline has no nodes. Add nodes before scheduling it.',
+          buttons: [Dialog.okButton()]
+        });
+        return;
+      }
+      if (runtimeType && runtimeType !== 'LOCAL') {
+        await showDialog({
+          title: 'Create Local Schedule',
+          body: 'Only Local pipelines can be scheduled locally. Open a Local pipeline and try again.',
+          buttons: [Dialog.okButton()]
+        });
+        return;
+      }
+      await promptCreateLocalSchedule({
+        pipelineJson,
+        pipelinePath: widget.context.path
+      });
+    };
+
+    const localRunLogWidgets = new Map<string, LocalRunLogWidget>();
+    const localSchedulesWidget = new LocalSchedulesWidget({
+      onCreate: createLocalScheduleFromActiveEditor,
+      onOpenLogs: (run, logs): void => {
+        let logWidget = localRunLogWidgets.get(run.id);
+        if (!logWidget) {
+          logWidget = new LocalRunLogWidget(run, logs);
+          localRunLogWidgets.set(run.id, logWidget);
+          logWidget.disposed.connect(() => localRunLogWidgets.delete(run.id));
+          app.shell.add(logWidget, 'main', { mode: 'split-right' });
+        } else {
+          logWidget.setLogs(logs);
+        }
+        logWidget.activate();
+      }
+    });
+    localSchedulesWidget.title.icon = pipelineIcon;
     restorer.add(localSchedulesWidget, LOCAL_SCHEDULES_WIDGET_ID);
     app.shell.add(localSchedulesWidget, 'left', { rank: 949 });
 

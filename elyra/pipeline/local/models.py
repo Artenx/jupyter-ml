@@ -181,7 +181,7 @@ class LocalSchedule:
 @dataclass
 class LocalScheduledRun:
     id: str
-    schedule_id: str
+    schedule_id: Optional[str]
     status: str
     scheduled_at: datetime
     started_at: Optional[datetime] = None
@@ -205,7 +205,7 @@ class LocalScheduledRun:
         "stopped",
         "skipped",
     }
-    VALID_TRIGGER_TYPES: ClassVar[set[str]] = {"manual", "scheduled", "retry"}
+    VALID_TRIGGER_TYPES: ClassVar[set[str]] = {"manual", "scheduled", "retry", "direct"}
 
     def __post_init__(self) -> None:
         if self.status not in self.VALID_STATUSES:
@@ -227,7 +227,7 @@ class LocalScheduledRun:
     def from_dict(cls, value: Dict[str, Any]) -> "LocalScheduledRun":
         return cls(
             id=value["id"],
-            schedule_id=value["schedule_id"],
+            schedule_id=value.get("schedule_id"),
             status=value["status"],
             scheduled_at=_datetime_from_string(value["scheduled_at"]),
             started_at=_datetime_from_string(value.get("started_at")),

@@ -37,7 +37,7 @@ export interface ILocalRetryPolicy {
 
 export interface ILocalScheduledRun {
   id: string;
-  schedule_id: string;
+  schedule_id: string | null;
   status:
     | 'queued'
     | 'scheduled'
@@ -52,7 +52,7 @@ export interface ILocalScheduledRun {
   finished_at: string | null;
   error_summary: string | null;
   log_path: string | null;
-  trigger_type: 'manual' | 'scheduled' | 'retry';
+  trigger_type: 'direct' | 'manual' | 'scheduled' | 'retry';
   attempt_number: number;
   parent_run_id: string | null;
   remote_kernel_id: string | null;
@@ -140,6 +140,13 @@ export class LocalScheduleService {
   static async listRuns(scheduleId: string): Promise<ILocalScheduledRun[]> {
     const response = await RequestHandler.makeGetRequest<ILocalRunsResponse>(
       `${SCHEDULES_PATH}/${encodeURIComponent(scheduleId)}/runs`
+    );
+    return response?.runs ?? [];
+  }
+
+  static async listDirectRuns(): Promise<ILocalScheduledRun[]> {
+    const response = await RequestHandler.makeGetRequest<ILocalRunsResponse>(
+      'elyra/pipeline/local/runs'
     );
     return response?.runs ?? [];
   }

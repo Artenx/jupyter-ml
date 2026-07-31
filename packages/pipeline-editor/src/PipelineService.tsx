@@ -55,11 +55,13 @@ export interface IPipelineResource extends IElyraResource {
 }
 
 export interface IPipelineScheduleResponse {
-  run_url: string;
-  git_url: string;
-  platform: string;
-  object_storage_url: string;
-  object_storage_path: string;
+  id?: string;
+  run_url?: string;
+  git_url?: string;
+  platform?: string;
+  object_storage_url?: string;
+  object_storage_path?: string;
+  trigger_type?: 'direct' | 'manual' | 'scheduled' | 'retry';
 }
 
 export interface IRuntimeSchema extends ISchemaResource {
@@ -219,7 +221,16 @@ export class PipelineService {
       }
       let dialogTitle;
       let dialogBody;
-      if (response['run_url']) {
+      if (response['trigger_type'] === 'direct') {
+        window.dispatchEvent(new Event('elyra-local-schedules-changed'));
+        dialogTitle = 'Local pipeline submitted';
+        dialogBody = (
+          <p>
+            The pipeline is running in the background. Open Local Schedules,
+            then Direct Runs, to monitor progress and view logs.
+          </p>
+        );
+      } else if (response['run_url']) {
         // pipeline executed remotely in a runtime of choice
         dialogTitle = 'Job submission to ' + runtimeName + ' succeeded';
         dialogBody = (

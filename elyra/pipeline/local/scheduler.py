@@ -30,6 +30,7 @@ from elyra.pipeline.local.local_processor import LocalPipelineStoppedError
 from elyra.pipeline.local.models import CronExpression
 from elyra.pipeline.local.models import LocalSchedule
 from elyra.pipeline.local.models import LocalScheduledRun
+from elyra.pipeline.local.models import RetryPolicy
 from elyra.pipeline.local.models import RunLogEntry
 from elyra.pipeline.local.run_store import RunStore
 from elyra.pipeline.local.schedule_store import ScheduleStore
@@ -56,6 +57,7 @@ class LocalPipelineScheduler:
         self.run_store = run_store or RunStore()
         self._execute_schedule = execute_schedule
         self._active_schedule_ids: set[str] = set()
+        self._active_run_schedule_ids: dict[str, str] = {}
         self._cancel_events: dict[str, threading.Event] = {}
         self._futures: dict[str, Future] = {}
         self._lock = threading.Lock()
@@ -126,11 +128,40 @@ class LocalPipelineScheduler:
         self._run_due_retries(current_time)
 
     def run_now(self, schedule_id: str, owner_id: str = "default", now: Optional[datetime] = None) -> LocalScheduledRun:
-        """Submit a user-requested run for a managed local task."""
         schedule = self.schedule_store.get(schedule_id, owner_id=owner_id)
         if schedule is None:
             raise ValueError(f"Local schedule '{schedule_id}' was not found.")
         return self._submit_run(schedule, "manual", now or datetime.now())
+
+    def submit_direct(
+        self,
+        pipeline_definition: dict,
+        owner_id: str = "default",
+        name: str = "pipeline",
+        now: Optional[datetime] = None,
+    ) -> LocalScheduledRun:
+        """Submit an unscheduled local pipeline run and record it in the run history.
+
+        The run is executed on the scheduler's executor so direct submissions share
+        the same lifecycle (status, logs, cancellation) as scheduled runs.  A transient
+        schedule carries the pipeline definition and a retry policy that disables
+        automatic retries.
+        """
+        current_time = now or datetime.now()
+        transient_schedule = LocalSchedule(
+            id=str(uuid4()),
+            display_name=name or "pipeline",
+            pipeline_definition=pipeline_definition,
+            cron_expression="0 0 * * *",
+            enabled=True,
+            created_at=current_time,
+            updated_at=current_time,
+            next_run_at=None,
+            owner_id=owner_id,
+            retry_policy=RetryPolicy(max_attempts=1, initial_delay_seconds=0, backoff_multiplier=1),
+        )
+        return self._submit_run(transient_schedule, "direct", current_time, persist_schedule=False)
+
 
     def retry_run(self, run_id: str, owner_id: str = "default", now: Optional[datetime] = None) -> LocalScheduledRun:
         """Submit a manual retry that retains the previous run as its parent."""
@@ -156,7 +187,7 @@ class LocalPipelineScheduler:
             run.finished_at = datetime.now()
             self.run_store.save(run)
             with self._lock:
-                self._active_schedule_ids.discard(run.schedule_id)
+                self._active_schedule_ids.discard(self._active_run_schedule_ids.pop(run.id, ""))
         return True
 
     def _run(self) -> None:
@@ -192,6 +223,7 @@ class LocalPipelineScheduler:
         trigger_type: str,
         now: datetime,
         parent_run: Optional[LocalScheduledRun] = None,
+        persist_schedule: bool = True,
     ) -> LocalScheduledRun:
         with self._lock:
             if schedule.id in self._active_schedule_ids:
@@ -206,7 +238,9 @@ class LocalPipelineScheduler:
 
         run_id = str(uuid4())
         run = LocalScheduledRun(
-            id=run_id, schedule_id=schedule.id, status="queued", scheduled_at=now,
+            id=run_id,
+            schedule_id=schedule.id if persist_schedule else None,
+            status="queued", scheduled_at=now,
             owner_id=schedule.owner_id, trigger_type=trigger_type,
             attempt_number=(parent_run.attempt_number + 1) if parent_run else 1,
             parent_run_id=parent_run.id if parent_run else None,
@@ -214,6 +248,7 @@ class LocalPipelineScheduler:
         )
         self.run_store.save(run, now=now)
         self._cancel_events[run.id] = threading.Event()
+        self._active_run_schedule_ids[run.id] = schedule.id
         self._futures[run.id] = self._executor.submit(self._execute_run, schedule, run)
         return run
 
@@ -254,6 +289,7 @@ class LocalPipelineScheduler:
             self.run_store.save(run)
             self._cancel_events.pop(run.id, None)
             self._futures.pop(run.id, None)
+            self._active_run_schedule_ids.pop(run.id, None)
 
     def _queue_retry(self, run: LocalScheduledRun, schedule: LocalSchedule, now: datetime) -> None:
         delay = schedule.retry_policy.initial_delay_seconds * (

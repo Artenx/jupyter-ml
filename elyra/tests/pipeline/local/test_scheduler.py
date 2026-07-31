@@ -166,6 +166,31 @@ def test_scheduler_runs_and_retries_tasks_on_demand(tmp_path):
     assert retry.attempt_number == 2
 
 
+def test_scheduler_records_direct_runs_without_creating_a_schedule(tmp_path):
+    run_store = RunStore(tmp_path)
+    executed = Event()
+
+    def execute(schedule, observer):
+        assert schedule.pipeline_definition == {"doc_type": "pipeline"}
+        observer("INFO", "Direct pipeline started.")
+        executed.set()
+
+    scheduler = LocalPipelineScheduler(run_store=run_store, execute_schedule=execute)
+    run = scheduler.submit_direct(
+        {"doc_type": "pipeline"}, owner_id="test-user", name="Direct pipeline"
+    )
+
+    assert executed.wait(timeout=1)
+    scheduler._futures[run.id].result(timeout=1)
+    scheduler.stop()
+
+    persisted_run = run_store.get(run.id, owner_id="test-user")
+    assert persisted_run.schedule_id is None
+    assert persisted_run.trigger_type == "direct"
+    assert persisted_run.status == "succeeded"
+    assert [item.id for item in run_store.list(owner_id="test-user", direct_only=True)] == [run.id]
+
+
 def test_scheduler_stops_a_running_task_after_current_operation(tmp_path):
     schedule_store = ScheduleStore(tmp_path)
     run_store = RunStore(tmp_path)

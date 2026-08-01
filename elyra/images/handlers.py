@@ -117,6 +117,8 @@ class ImageBuildCollectionHandler(ImageBuildBaseHandler):
 
     @web.authenticated
     async def post(self) -> None:
+        if not self.manager.registry_settings.is_build_authorized(self.owner_id):
+            raise web.HTTPError(403, reason="Docker image builds are not authorized for this user.")
         payload = self.payload()
         dockerfile_path = self.require_string(payload, "dockerfile_path")
         image_reference = self.require_string(payload, "image_reference")

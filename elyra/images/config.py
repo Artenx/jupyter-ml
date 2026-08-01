@@ -15,6 +15,7 @@
 #
 """Server-side configuration for Dockerfile image builds."""
 
+from traitlets import List
 from traitlets import Unicode
 from traitlets.config import LoggingConfigurable
 
@@ -34,7 +35,16 @@ class RegistrySettings(LoggingConfigurable):
     credential_master_key = Unicode(
         "", help="URL-safe base64 Fernet key used to encrypt user registry tokens at rest."
     ).tag(config=True)
+    allowed_build_users = List(
+        Unicode(),
+        default_value=[],
+        help="User names authorized to execute Docker image builds. The '*' entry authorizes every user.",
+    ).tag(config=True)
 
     def has_admin_credential(self) -> bool:
         """Return whether all administrator registry credential fields are configured."""
         return bool(self.admin_registry_url and self.admin_username and self.admin_token)
+
+    def is_build_authorized(self, owner_id: str) -> bool:
+        """Return whether an authenticated user may execute Docker builds."""
+        return owner_id in self.allowed_build_users or "*" in self.allowed_build_users

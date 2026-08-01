@@ -86,7 +86,7 @@ export class RuntimeImagesWidget extends MetadataWidget {
       // Empty metadata
       return (
         <div className={RUNTIME_IMAGES_CLASS}>
-          <DockerfileImageBuilderWidget />
+          <DockerfileImageBuilderWidget onRuntimeImageRegistered={this.updateMetadata} />
           <div>
             <br />
             <h6 className="elyra-no-metadata-msg">
@@ -98,7 +98,7 @@ export class RuntimeImagesWidget extends MetadataWidget {
     }
     return (
       <div className={RUNTIME_IMAGES_CLASS}>
-        <DockerfileImageBuilderWidget />
+        <DockerfileImageBuilderWidget onRuntimeImageRegistered={this.updateMetadata} />
         <RuntimeImagesDisplay
           metadata={metadata}
           updateMetadata={this.updateMetadata}

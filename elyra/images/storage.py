@@ -36,6 +36,7 @@ from elyra.images.models import ImageBuild
 from elyra.images.models import ImageBuildLogEntry
 from elyra.images.models import RegistryCredential
 from elyra.images.models import RegistryCredentialSummary
+from elyra.util.file_lock import JsonStoreLock
 
 
 def _owner_storage_name(owner_id: str) -> str:
@@ -81,35 +82,38 @@ class ImageBuildStore:
         return next((build for build in self.list(owner_id) if build.id == build_id), None)
 
     def save(self, build: ImageBuild, now: Optional[datetime] = None) -> ImageBuild:
-        builds = self.list(build.owner_id)
-        for index, current in enumerate(builds):
-            if current.id == build.id:
-                builds[index] = build
-                self._write_builds(build.owner_id, self._prune(builds, now or datetime.now()))
-                return build
-        builds.append(build)
-        self._write_builds(build.owner_id, self._prune(builds, now or datetime.now()))
-        return build
+        with self._lock(build.owner_id).acquire():
+            builds = self.list(build.owner_id)
+            for index, current in enumerate(builds):
+                if current.id == build.id:
+                    builds[index] = build
+                    self._write_builds(build.owner_id, self._prune(builds, now or datetime.now()))
+                    return build
+            builds.append(build)
+            self._write_builds(build.owner_id, self._prune(builds, now or datetime.now()))
+            return build
 
     def delete(self, build_id: str, owner_id: str) -> bool:
-        builds = self.list(owner_id)
-        remaining = [build for build in builds if build.id != build_id]
-        if len(remaining) == len(builds):
-            return False
-        self._write_builds(owner_id, remaining)
-        log_path = self._log_path(owner_id, build_id)
-        if log_path.exists():
-            log_path.unlink()
-        return True
+        with self._lock(owner_id).acquire():
+            builds = self.list(owner_id)
+            remaining = [build for build in builds if build.id != build_id]
+            if len(remaining) == len(builds):
+                return False
+            self._write_builds(owner_id, remaining)
+            log_path = self._log_path(owner_id, build_id)
+            if log_path.exists():
+                log_path.unlink()
+            return True
 
     def append_log(self, build_id: str, owner_id: str, entry: ImageBuildLogEntry) -> None:
-        if self.get(build_id, owner_id) is None:
-            raise ValueError(f"Image build '{build_id}' was not found.")
-        log_path = self._log_path(owner_id, build_id)
-        log_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with log_path.open("a", encoding="utf-8") as file:
-            file.write(json.dumps(entry.to_dict()) + "\n")
-        log_path.chmod(0o600)
+        with self._lock(owner_id).acquire():
+            if self.get(build_id, owner_id) is None:
+                raise ValueError(f"Image build '{build_id}' was not found.")
+            log_path = self._log_path(owner_id, build_id)
+            log_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with log_path.open("a", encoding="utf-8") as file:
+                file.write(json.dumps(entry.to_dict()) + "\n")
+            log_path.chmod(0o600)
 
     def logs(self, build_id: str, owner_id: str) -> List[ImageBuildLogEntry]:
         if self.get(build_id, owner_id) is None:
@@ -122,6 +126,9 @@ class ImageBuildStore:
 
     def _builds_path(self, owner_id: str) -> Path:
         return self.builds_dir / f"{_owner_storage_name(owner_id)}.json"
+
+    def _lock(self, owner_id: str) -> JsonStoreLock:
+        return JsonStoreLock(self.builds_dir / f"{_owner_storage_name(owner_id)}.lock")
 
     def _log_path(self, owner_id: str, build_id: str) -> Path:
         return (
@@ -194,23 +201,25 @@ class RegistryCredentialStore:
             created_at=credential.created_at,
             updated_at=credential.updated_at,
         )
-        credentials = self._credentials(credential.owner_id)
-        for index, current in enumerate(credentials):
-            if current.id == credential.id:
-                credentials[index] = encrypted_credential
-                self._write(credential.owner_id, credentials)
-                return encrypted_credential.summary()
-        credentials.append(encrypted_credential)
-        self._write(credential.owner_id, credentials)
-        return encrypted_credential.summary()
+        with self._lock(credential.owner_id).acquire():
+            credentials = self._credentials(credential.owner_id)
+            for index, current in enumerate(credentials):
+                if current.id == credential.id:
+                    credentials[index] = encrypted_credential
+                    self._write(credential.owner_id, credentials)
+                    return encrypted_credential.summary()
+            credentials.append(encrypted_credential)
+            self._write(credential.owner_id, credentials)
+            return encrypted_credential.summary()
 
     def delete(self, credential_id: str, owner_id: str) -> bool:
-        credentials = self._credentials(owner_id)
-        remaining = [credential for credential in credentials if credential.id != credential_id]
-        if len(remaining) == len(credentials):
-            return False
-        self._write(owner_id, remaining)
-        return True
+        with self._lock(owner_id).acquire():
+            credentials = self._credentials(owner_id)
+            remaining = [credential for credential in credentials if credential.id != credential_id]
+            if len(remaining) == len(credentials):
+                return False
+            self._write(owner_id, remaining)
+            return True
 
     def _credentials(self, owner_id: str) -> List[RegistryCredential]:
         path = self._path(owner_id)
@@ -225,6 +234,9 @@ class RegistryCredentialStore:
 
     def _path(self, owner_id: str) -> Path:
         return self.storage_dir / f"{_owner_storage_name(owner_id)}.json"
+
+    def _lock(self, owner_id: str) -> JsonStoreLock:
+        return JsonStoreLock(self.storage_dir / f"{_owner_storage_name(owner_id)}.lock")
 
     def _write(self, owner_id: str, credentials: Iterable[RegistryCredential]) -> None:
         _write_json(self._path(owner_id), (credential.to_storage_dict() for credential in credentials))

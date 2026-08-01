@@ -79,6 +79,8 @@ class ImageBuildManager:
         credential_id: Optional[str] = None,
     ) -> ImageBuild:
         """Validate and queue a Docker image build for one authenticated user."""
+        if not self.registry_settings.is_build_authorized(owner_id):
+            raise PermissionError("Docker image builds are not authorized for this user.")
         dockerfile = workspace_path(self.root_dir, dockerfile_path)
         if not dockerfile.is_file():
             raise ValueError(f"Dockerfile '{dockerfile_path}' was not found in the workspace.")
@@ -249,14 +251,25 @@ class ImageBuildManager:
         except ValueError as exc:
             self._fail(build, str(exc))
             return
-        if not self._run_docker_command(
-            build,
-            ["docker", "login", registry_url, "--username", username, "--password-stdin"],
-            None,
-            token=token,
-        ):
-            return
-        self._run_docker_command(build, ["docker", "push", build.image_reference], "pushed", secrets=[token])
+        with tempfile.TemporaryDirectory(prefix="elyra-docker-config-") as docker_config:
+            os.chmod(docker_config, 0o700)
+            environment = os.environ.copy()
+            environment["DOCKER_CONFIG"] = docker_config
+            if not self._run_docker_command(
+                build,
+                ["docker", "login", registry_url, "--username", username, "--password-stdin"],
+                None,
+                token=token,
+                environment=environment,
+            ):
+                return
+            self._run_docker_command(
+                build,
+                ["docker", "push", build.image_reference],
+                "pushed",
+                secrets=[token],
+                environment=environment,
+            )
 
     def _credentials_for(self, build: ImageBuild) -> tuple[str, str, str]:
         if build.credential_source == "admin":
@@ -282,6 +295,7 @@ class ImageBuildManager:
         success_status: Optional[str],
         token: Optional[str] = None,
         secrets: Optional[list[str]] = None,
+        environment: Optional[dict[str, str]] = None,
     ) -> bool:
         sensitive_values = [*(secrets or []), token]
         key = (build.owner_id, build.id)
@@ -292,6 +306,7 @@ class ImageBuildManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                env=environment,
             )
         except (FileNotFoundError, PermissionError, OSError) as exc:
             self._fail(build, f"Docker CLI could not start: {exc}", sensitive_values)

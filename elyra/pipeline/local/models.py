@@ -194,6 +194,7 @@ class LocalScheduledRun:
     parent_run_id: Optional[str] = None
     remote_kernel_id: Optional[str] = None
     next_retry_at: Optional[datetime] = None
+    pipeline_definition: Optional[Dict[str, Any]] = None
 
     VALID_STATUSES: ClassVar[set[str]] = {
         "queued",
@@ -240,6 +241,7 @@ class LocalScheduledRun:
             parent_run_id=value.get("parent_run_id"),
             remote_kernel_id=value.get("remote_kernel_id"),
             next_retry_at=_datetime_from_string(value.get("next_retry_at")),
+            pipeline_definition=value.get("pipeline_definition"),
         )
 
 

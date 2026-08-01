@@ -30,6 +30,7 @@ import jupyter_core.paths
 from elyra.pipeline.local.models import LocalScheduledRun
 from elyra.pipeline.local.models import RunLogEntry
 from elyra.pipeline.local.models import RunResult
+from elyra.util.file_lock import JsonStoreLock
 
 
 class RunStore:
@@ -43,6 +44,9 @@ class RunStore:
         self.path = self.storage_dir / "runs.json"
         self.logs_dir = self.storage_dir / "logs"
         self.results_path = self.storage_dir / "results.json"
+        self._runs_lock = JsonStoreLock(self.storage_dir / "runs.lock")
+        self._results_lock = JsonStoreLock(self.storage_dir / "results.lock")
+        self._logs_lock = JsonStoreLock(self.storage_dir / "logs.lock")
 
     def list(
         self,
@@ -66,35 +70,36 @@ class RunStore:
         return next((run for run in self.list(owner_id=owner_id) if run.id == run_id), None)
 
     def save(self, run: LocalScheduledRun, now: Optional[datetime] = None) -> LocalScheduledRun:
-        runs = self.list()
-        for index, current in enumerate(runs):
-            if current.id == run.id:
-                runs[index] = run
-                self._write(self._prune(runs, now or datetime.now()))
-                return run
-        runs.append(run)
-        self._write(self._prune(runs, now or datetime.now()))
-        return run
+        with self._runs_lock.acquire():
+            runs = self.list()
+            for index, current in enumerate(runs):
+                if current.id == run.id:
+                    runs[index] = run
+                    self._write(self._prune(runs, now or datetime.now()))
+                    return run
+            runs.append(run)
+            self._write(self._prune(runs, now or datetime.now()))
+            return run
 
     def delete(self, run_id: str, owner_id: Optional[str] = None) -> bool:
         """Delete one persisted run after verifying its ownership."""
-        runs = self.list()
-        remaining = [
-            run for run in runs if run.id != run_id or (owner_id is not None and run.owner_id != owner_id)
-        ]
-        if len(remaining) == len(runs):
-            return False
-        self._write(remaining)
-        self._remove_log(run_id)
-        results = [result for result in self._results() if result.run_id != run_id]
-        self._write_results(results)
-        return True
+        with self._runs_lock.acquire(), self._results_lock.acquire():
+            runs = self.list()
+            remaining = [run for run in runs if run.id != run_id or (owner_id is not None and run.owner_id != owner_id)]
+            if len(remaining) == len(runs):
+                return False
+            self._write(remaining)
+            self._remove_log(run_id)
+            results = [result for result in self._results() if result.run_id != run_id]
+            self._write_results(results)
+            return True
 
     def append_log(self, run: LocalScheduledRun, entry: RunLogEntry) -> None:
-        self.logs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        log_path = self.logs_dir / f"{run.id}.jsonl"
-        with log_path.open("a", encoding="utf-8") as file:
-            file.write(json.dumps(entry.to_dict()) + "\n")
+        with self._logs_lock.acquire():
+            self.logs_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+            log_path = self.logs_dir / f"{run.id}.jsonl"
+            with log_path.open("a", encoding="utf-8") as file:
+                file.write(json.dumps(entry.to_dict()) + "\n")
 
     def logs(self, run_id: str) -> List[RunLogEntry]:
         log_path = self.logs_dir / f"{run_id}.jsonl"
@@ -110,17 +115,18 @@ class RunStore:
             return [RunResult.from_dict(value) for value in json.load(file) if value["run_id"] == run_id]
 
     def save_result(self, result: RunResult) -> RunResult:
-        if self.get(result.run_id) is None:
-            raise ValueError(f"Run '{result.run_id}' must exist before saving a result.")
-        results = self._results()
-        for index, current in enumerate(results):
-            if current.id == result.id:
-                results[index] = result
-                self._write_results(results)
-                return result
-        results.append(result)
-        self._write_results(results)
-        return result
+        with self._results_lock.acquire():
+            if self.get(result.run_id) is None:
+                raise ValueError(f"Run '{result.run_id}' must exist before saving a result.")
+            results = self._results()
+            for index, current in enumerate(results):
+                if current.id == result.id:
+                    results[index] = result
+                    self._write_results(results)
+                    return result
+            results.append(result)
+            self._write_results(results)
+            return result
 
     def _results(self) -> List[RunResult]:
         if not self.results_path.exists():

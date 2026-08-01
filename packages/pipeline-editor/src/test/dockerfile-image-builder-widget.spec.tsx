@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+import * as React from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import * as React from 'react';
 
 import { DockerfileImageBuilderWidget } from '../DockerfileImageBuilderWidget';
 import { ImageBuildService } from '../ImageBuildService';
@@ -38,6 +38,16 @@ const setSelect = async (select: HTMLSelectElement, value: string): Promise<void
     setter?.call(select, value);
     select.dispatchEvent(new Event('change', { bubbles: true }));
   });
+};
+
+const getInput = (container: HTMLElement, labelText: string): HTMLInputElement => {
+  const labels = Array.from(container.querySelectorAll('label'));
+  const label = labels.find((item) => item.textContent?.trim().startsWith(labelText));
+  const input = label?.querySelector('input');
+  if (!input) {
+    throw new Error(`Input with label "${labelText}" was not found.`);
+  }
+  return input;
 };
 
 describe('@elyra/pipeline-editor', () => {
@@ -72,12 +82,11 @@ describe('@elyra/pipeline-editor', () => {
       await act(async () => {
         root.render(React.createElement(DockerfileImageBuilderWidget));
       });
-      const inputs = container.querySelectorAll('input');
-      await setInput(inputs[1], 'private.example.com/team/image:latest');
-      await setInput(inputs[2], 'Another registry');
-      await setInput(inputs[3], 'another.example.com');
-      await setInput(inputs[4], 'alice');
-      await setInput(inputs[5], 'private-token');
+      await setInput(getInput(container, 'Image reference'), 'private.example.com/team/image:latest');
+      await setInput(getInput(container, 'Display name'), 'Another registry');
+      await setInput(getInput(container, 'Registry URL'), 'another.example.com');
+      await setInput(getInput(container, 'Username'), 'alice');
+      await setInput(getInput(container, 'Access token'), 'private-token');
       const selects = container.querySelectorAll('select');
       await setSelect(selects[0], 'private');
       const buttons = Array.from(container.querySelectorAll('button'));
@@ -92,7 +101,7 @@ describe('@elyra/pipeline-editor', () => {
         username: 'alice',
         token: 'private-token'
       });
-      expect((inputs[5] as HTMLInputElement).value).toBe('');
+      expect(getInput(container, 'Access token').value).toBe('');
 
       const buildButton = Array.from(container.querySelectorAll('button')).find(
         (button) => button.textContent === 'Build image'
@@ -133,6 +142,9 @@ describe('@elyra/pipeline-editor', () => {
       await act(async () => {
         root.render(React.createElement(DockerfileImageBuilderWidget));
       });
+      expect(container.querySelector('.elyra-imageBuilder-workspace')).not.toBeNull();
+      expect(container.querySelector('.elyra-imageBuilder-authoring')).not.toBeNull();
+      expect(container.querySelector('.elyra-imageBuilder-buildForm')).not.toBeNull();
       const buildButton = Array.from(container.querySelectorAll('button')).find((button) =>
         button.textContent?.includes('registry.example.com/team/image:latest')
       );
@@ -141,6 +153,8 @@ describe('@elyra/pipeline-editor', () => {
       });
 
       expect(container.textContent).toContain('Image pushed');
+      expect(container.querySelector('.elyra-imageBuilder-historyItem.is-selected')).not.toBeNull();
+      expect(container.querySelector('.elyra-imageBuilder-status.is-pushed')).not.toBeNull();
       const registerButton = Array.from(container.querySelectorAll('button')).find(
         (button) => button.textContent === 'Add Runtime Image'
       );

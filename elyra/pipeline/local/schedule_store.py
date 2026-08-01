@@ -25,6 +25,7 @@ from typing import Optional
 import jupyter_core.paths
 
 from elyra.pipeline.local.models import LocalSchedule
+from elyra.util.file_lock import JsonStoreLock
 
 
 class ScheduleStore:
@@ -33,6 +34,7 @@ class ScheduleStore:
     def __init__(self, storage_dir: Optional[Path] = None):
         self.storage_dir = storage_dir or Path(jupyter_core.paths.jupyter_data_dir()) / "metadata" / "local-schedules"
         self.path = self.storage_dir / "schedules.json"
+        self._lock = JsonStoreLock(self.storage_dir / "schedules.lock")
 
     def list(self, owner_id: Optional[str] = None) -> List[LocalSchedule]:
         if not self.path.exists():
@@ -45,27 +47,29 @@ class ScheduleStore:
         return next((schedule for schedule in self.list(owner_id) if schedule.id == schedule_id), None)
 
     def save(self, schedule: LocalSchedule) -> LocalSchedule:
-        schedules = self.list()
-        for index, current in enumerate(schedules):
-            if current.id == schedule.id:
-                schedules[index] = schedule
-                self._write(schedules)
-                return schedule
-        schedules.append(schedule)
-        self._write(schedules)
-        return schedule
+        with self._lock.acquire():
+            schedules = self.list()
+            for index, current in enumerate(schedules):
+                if current.id == schedule.id:
+                    schedules[index] = schedule
+                    self._write(schedules)
+                    return schedule
+            schedules.append(schedule)
+            self._write(schedules)
+            return schedule
 
     def delete(self, schedule_id: str, owner_id: Optional[str] = None) -> bool:
-        schedules = self.list()
-        remaining = [
-            schedule
-            for schedule in schedules
-            if schedule.id != schedule_id or (owner_id is not None and schedule.owner_id != owner_id)
-        ]
-        if len(remaining) == len(schedules):
-            return False
-        self._write(remaining)
-        return True
+        with self._lock.acquire():
+            schedules = self.list()
+            remaining = [
+                schedule
+                for schedule in schedules
+                if schedule.id != schedule_id or (owner_id is not None and schedule.owner_id != owner_id)
+            ]
+            if len(remaining) == len(schedules):
+                return False
+            self._write(remaining)
+            return True
 
     def _write(self, schedules: List[LocalSchedule]) -> None:
         self.storage_dir.mkdir(mode=0o700, parents=True, exist_ok=True)

@@ -114,7 +114,9 @@ def test_scheduler_recovery_sets_next_trigger_and_finalizes_interrupted_run(tmp_
     scheduler.stop()
 
     assert schedule_store.get("hourly-pipeline").next_run_at == datetime(2026, 7, 29, 10, 0)
-    assert run_store.get("interrupted").status == "failed"
+    recovered_run = run_store.get("interrupted")
+    assert recovered_run.status == "retrying"
+    assert recovered_run.next_retry_at == now + timedelta(seconds=60)
 
 
 def test_scheduler_retries_failed_run_with_configured_backoff(tmp_path):
@@ -150,7 +152,9 @@ def test_scheduler_retries_failed_run_with_configured_backoff(tmp_path):
 def test_scheduler_runs_and_retries_tasks_on_demand(tmp_path):
     schedule_store = ScheduleStore(tmp_path)
     run_store = RunStore(tmp_path)
-    scheduler = LocalPipelineScheduler(schedule_store=schedule_store, run_store=run_store, execute_schedule=lambda *_: None)
+    scheduler = LocalPipelineScheduler(
+        schedule_store=schedule_store, run_store=run_store, execute_schedule=lambda *_: None
+    )
     schedule = _schedule(datetime(2026, 7, 29, 9, 0))
     schedule_store.save(schedule)
 
@@ -176,9 +180,7 @@ def test_scheduler_records_direct_runs_without_creating_a_schedule(tmp_path):
         executed.set()
 
     scheduler = LocalPipelineScheduler(run_store=run_store, execute_schedule=execute)
-    run = scheduler.submit_direct(
-        {"doc_type": "pipeline"}, owner_id="test-user", name="Direct pipeline"
-    )
+    run = scheduler.submit_direct({"doc_type": "pipeline"}, owner_id="test-user", name="Direct pipeline")
 
     assert executed.wait(timeout=1)
     scheduler._futures[run.id].result(timeout=1)
@@ -189,6 +191,21 @@ def test_scheduler_records_direct_runs_without_creating_a_schedule(tmp_path):
     assert persisted_run.trigger_type == "direct"
     assert persisted_run.status == "succeeded"
     assert [item.id for item in run_store.list(owner_id="test-user", direct_only=True)] == [run.id]
+
+
+def test_scheduler_retries_direct_runs_without_persisting_a_schedule(tmp_path):
+    run_store = RunStore(tmp_path)
+    scheduler = LocalPipelineScheduler(run_store=run_store, execute_schedule=lambda *_: None)
+    run = scheduler.submit_direct({"doc_type": "pipeline"}, owner_id="test-user")
+    scheduler._futures[run.id].result(timeout=1)
+
+    retry = scheduler.retry_run(run.id, owner_id="test-user")
+    scheduler._futures[retry.id].result(timeout=1)
+    scheduler.stop()
+
+    assert retry.schedule_id is None
+    assert retry.parent_run_id == run.id
+    assert retry.attempt_number == 2
 
 
 def test_scheduler_stops_a_running_task_after_current_operation(tmp_path):

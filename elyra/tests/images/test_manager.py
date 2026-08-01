@@ -82,6 +82,7 @@ def _settings() -> RegistrySettings:
     settings.admin_username = "admin"
     settings.admin_token = "admin-token"
     settings.credential_master_key = Fernet.generate_key().decode("utf-8")
+    settings.allowed_build_users = ["alice"]
     return settings
 
 
@@ -173,6 +174,12 @@ def test_admin_push_uses_password_stdin_and_redacts_logs(manager, monkeypatch):
     assert calls[1][0] == ["docker", "push", build.image_reference]
     assert manager.build_store.get(build.id, "alice").status == "pushed"
     assert "admin-token" not in "\n".join(entry.message for entry in manager.build_store.logs(build.id, "alice"))
+    assert calls[0][1]["env"]["DOCKER_CONFIG"] == calls[1][1]["env"]["DOCKER_CONFIG"]
+
+
+def test_start_build_requires_an_authorized_user(manager):
+    with pytest.raises(PermissionError, match="not authorized"):
+        manager.start_build("bob", "images/Dockerfile", "registry.example.com/team/image:latest")
 
 
 def test_personal_push_uses_the_owner_credential(manager, monkeypatch):

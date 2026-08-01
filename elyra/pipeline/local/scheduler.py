@@ -37,7 +37,6 @@ from elyra.pipeline.local.schedule_store import ScheduleStore
 from elyra.pipeline.parser import PipelineParser
 from elyra.pipeline.processor import PipelineProcessorManager
 
-
 RunObserver = Callable[[str, str, Optional[str]], None]
 ScheduleExecutor = Callable[[LocalSchedule, RunObserver], None]
 
@@ -89,9 +88,10 @@ class LocalPipelineScheduler:
                 run.finished_at = now
                 run.error_summary = "Jupyter Server stopped before the local pipeline completed."
                 self.run_store.save(run, now=now)
-                schedule = self.schedule_store.get(run.schedule_id, owner_id=run.owner_id)
+                schedule = self.schedule_store.get(run.schedule_id, owner_id=run.owner_id) if run.schedule_id else None
                 if schedule and run.attempt_number < schedule.retry_policy.max_attempts:
                     self._queue_retry(run, schedule, now)
+                    self.run_store.save(run, now=now)
 
         for schedule in self.schedule_store.list():
             if schedule.enabled:
@@ -115,6 +115,10 @@ class LocalPipelineScheduler:
     def run_due(self, now: Optional[datetime] = None) -> None:
         """Submit each enabled schedule whose next trigger has arrived."""
         current_time = now or datetime.now()
+        # Retry work has priority over a new cron trigger for the same schedule.
+        # This preserves the configured retry policy instead of turning the retry
+        # into a skipped run when both become due in the same polling cycle.
+        self._run_due_retries(current_time)
         for schedule in self.schedule_store.list():
             if not schedule.enabled:
                 continue
@@ -125,7 +129,6 @@ class LocalPipelineScheduler:
                 continue
             if schedule.next_run_at <= current_time:
                 self._trigger(schedule, current_time)
-        self._run_due_retries(current_time)
 
     def run_now(self, schedule_id: str, owner_id: str = "default", now: Optional[datetime] = None) -> LocalScheduledRun:
         schedule = self.schedule_store.get(schedule_id, owner_id=owner_id)
@@ -162,12 +165,28 @@ class LocalPipelineScheduler:
         )
         return self._submit_run(transient_schedule, "direct", current_time, persist_schedule=False)
 
-
     def retry_run(self, run_id: str, owner_id: str = "default", now: Optional[datetime] = None) -> LocalScheduledRun:
         """Submit a manual retry that retains the previous run as its parent."""
         run = self.run_store.get(run_id, owner_id=owner_id)
         if run is None:
             raise ValueError(f"Local run '{run_id}' was not found.")
+        if run.schedule_id is None:
+            if run.pipeline_definition is None:
+                raise ValueError("This direct run does not contain a pipeline definition for retry.")
+            current_time = now or datetime.now()
+            transient_schedule = LocalSchedule(
+                id=str(uuid4()),
+                display_name="Direct pipeline retry",
+                pipeline_definition=run.pipeline_definition,
+                cron_expression="0 0 * * *",
+                enabled=True,
+                created_at=current_time,
+                updated_at=current_time,
+                next_run_at=None,
+                owner_id=owner_id,
+                retry_policy=RetryPolicy(max_attempts=1, initial_delay_seconds=0, backoff_multiplier=1),
+            )
+            return self._submit_run(transient_schedule, "retry", current_time, parent_run=run, persist_schedule=False)
         schedule = self.schedule_store.get(run.schedule_id, owner_id=owner_id)
         if schedule is None:
             raise ValueError(f"Local schedule '{run.schedule_id}' was not found.")
@@ -210,6 +229,8 @@ class LocalPipelineScheduler:
         for run in self.run_store.list():
             if run.status != "retrying" or run.next_retry_at is None or run.next_retry_at > now:
                 continue
+            if run.schedule_id is None:
+                continue
             schedule = self.schedule_store.get(run.schedule_id, owner_id=run.owner_id)
             if schedule is None:
                 continue
@@ -228,8 +249,13 @@ class LocalPipelineScheduler:
         with self._lock:
             if schedule.id in self._active_schedule_ids:
                 skipped = LocalScheduledRun(
-                    id=str(uuid4()), schedule_id=schedule.id, status="skipped", scheduled_at=now,
-                    finished_at=now, owner_id=schedule.owner_id, trigger_type=trigger_type,
+                    id=str(uuid4()),
+                    schedule_id=schedule.id,
+                    status="skipped",
+                    scheduled_at=now,
+                    finished_at=now,
+                    owner_id=schedule.owner_id,
+                    trigger_type=trigger_type,
                     error_summary="Skipped because an earlier run is still active.",
                 )
                 self.run_store.save(skipped, now=now)
@@ -240,11 +266,14 @@ class LocalPipelineScheduler:
         run = LocalScheduledRun(
             id=run_id,
             schedule_id=schedule.id if persist_schedule else None,
-            status="queued", scheduled_at=now,
-            owner_id=schedule.owner_id, trigger_type=trigger_type,
+            status="queued",
+            scheduled_at=now,
+            owner_id=schedule.owner_id,
+            trigger_type=trigger_type,
             attempt_number=(parent_run.attempt_number + 1) if parent_run else 1,
             parent_run_id=parent_run.id if parent_run else None,
             log_path=str(self.run_store.logs_dir / f"{run_id}.jsonl"),
+            pipeline_definition=schedule.pipeline_definition if not persist_schedule else None,
         )
         self.run_store.save(run, now=now)
         self._cancel_events[run.id] = threading.Event()
@@ -301,7 +330,9 @@ class LocalPipelineScheduler:
     def _default_execute_schedule(
         self, schedule: LocalSchedule, run: LocalScheduledRun, observer: RunObserver, cancel_event: threading.Event
     ) -> None:
-        pipeline = PipelineParser(root_dir=str(self.root_dir) if self.root_dir else None).parse(schedule.pipeline_definition)
+        pipeline = PipelineParser(root_dir=str(self.root_dir) if self.root_dir else None).parse(
+            schedule.pipeline_definition
+        )
         processor = PipelineProcessorManager.instance().get_processor_for_runtime("local")
         if not isinstance(processor, LocalPipelineProcessor):
             raise RuntimeError("The local pipeline processor is unavailable.")

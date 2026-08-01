@@ -106,6 +106,7 @@ class TestImageBuildHandlers(AsyncHTTPTestCase):
         settings.admin_username = "admin"
         settings.admin_token = "admin-token"
         settings.credential_master_key = Fernet.generate_key().decode("utf-8")
+        settings.allowed_build_users = ["alice"]
         self.manager = ImageBuildManager(
             str(root),
             build_store=ImageBuildStore(Path(self._storage.name) / "builds"),
@@ -180,6 +181,17 @@ class TestImageBuildHandlers(AsyncHTTPTestCase):
 
     def test_build_requests_validate_and_isolate_builds_and_logs(self):
         assert self.fetch_as("/builds", method="POST", body=self.payload()).code == 400
+        assert (
+            self.fetch_as(
+                "/builds",
+                user="bob",
+                method="POST",
+                body=self.payload(
+                    dockerfile_path="Dockerfile", image_reference="registry.example.com/team/image:latest"
+                ),
+            ).code
+            == 403
+        )
         response = self.fetch_as(
             "/builds",
             method="POST",

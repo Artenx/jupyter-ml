@@ -1,0 +1,42 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling>=1.5.0"]
+
+[project]
+name = "jupyter-ml-image-builder"
+description = "Dockerfile image builder for Elyra/JupyterLab"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "cryptography>=3.4.7",
+    "elyra>=4.1.1",
+    "jupyter_core>=5.3.1",
+    "jupyter_server>=2.7.3",
+    "tornado>=6.1.0",
+    "traitlets>=4.3.2",
+]
+dynamic = ["version"]
+
+[project.entry-points."jupyter_server.extensions"]
+jupyter_ml_image_builder = "jupyter_ml_image_builder"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=5.4.1",
+    "pytest-cov",
+    "pytest-tornasync",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.hatch.version]
+path = "jupyter_ml_image_builder/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["jupyter_ml_image_builder"]
+
+[tool.hatch.build.targets.sdist]
+include = ["jupyter_ml_image_builder"]

@@ -253,8 +253,13 @@ class ImageBuildManager:
             return
         with tempfile.TemporaryDirectory(prefix="jupyter-ml-docker-config-") as docker_config:
             os.chmod(docker_config, 0o700)
-            environment = os.environ.copy()
-            environment["DOCKER_CONFIG"] = docker_config
+            # Pass only the minimal environment needed by the Docker CLI rather
+            # than copying the full parent environment, which may carry secrets
+            # unrelated to the build.
+            environment = {"DOCKER_CONFIG": docker_config}
+            path_env = os.environ.get("PATH")
+            if path_env:
+                environment["PATH"] = path_env
             if not self._run_docker_command(
                 build,
                 ["docker", "login", registry_url, "--username", username, "--password-stdin"],
@@ -319,7 +324,8 @@ class ImageBuildManager:
                 for line in output.splitlines():
                     self._append_log(build, "INFO", redact_secrets(line, sensitive_values))
             else:
-                assert process.stdout is not None
+                if process.stdout is None:
+                    raise OSError("Docker command produced no stdout stream.")
                 for line in process.stdout:
                     self._append_log(build, "INFO", redact_secrets(line.rstrip(), sensitive_values))
                 process.wait()

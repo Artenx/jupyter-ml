@@ -18,7 +18,6 @@
 from datetime import datetime
 from http.client import responses
 import json
-import traceback
 
 from tornado import web
 
@@ -67,7 +66,6 @@ class HttpErrorMixin(object):
                         reply["message"] = str(exception.args[0])
                 else:
                     reply["message"] = f"{exception.__class__.__name__}: {str(exception)}"
-                reply["traceback"] = "".join(traceback.format_exception(*exc_info))
 
             # Construct the custom reason, if defined
             custom_reason = getattr(exception, "reason", "")

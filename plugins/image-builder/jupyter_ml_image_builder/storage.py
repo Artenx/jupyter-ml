@@ -96,7 +96,7 @@ class ImageBuildStore:
     def delete(self, build_id: str, owner_id: str) -> bool:
         with self._lock(owner_id).acquire():
             builds = self.list(owner_id)
-            remaining = [build for build in builds if build.id != build_id]
+            remaining = [build for build in builds if build.id != build_id and build.owner_id == owner_id]
             if len(remaining) == len(builds):
                 return False
             self._write_builds(owner_id, remaining)

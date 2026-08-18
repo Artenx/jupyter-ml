@@ -277,26 +277,21 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
   };
 
   return (
-    <section className="elyra-dockerfileImageBuilder">
-      <header className="elyra-imageBuilder-header">
+    <section className="jupyter-ml-dockerfileImageBuilder">
+      <header className="jupyter-ml-imageBuilder-header">
         <div>
-          <p className="elyra-imageBuilder-eyebrow">Runtime image workspace</p>
           <h3>Dockerfile Image Builder</h3>
-          <p className="elyra-imageBuilder-subtitle">Author a Dockerfile, build locally, then publish it as a runtime.</p>
+          <p className="jupyter-ml-imageBuilder-subtitle">Author a Dockerfile, build locally, then publish it as a runtime.</p>
         </div>
-        <button className="elyra-imageBuilder-refresh" type="button" onClick={() => void refresh()}>
+        <button className="jupyter-ml-imageBuilder-refresh jp-mod-styled" type="button" onClick={() => void refresh()}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </header>
-      <div className="elyra-imageBuilder-workspace">
-        <aside className="elyra-imageBuilder-rail">
-          <section className="elyra-imageBuilder-card elyra-imageBuilder-buildForm">
-            <div className="elyra-imageBuilder-sectionHeading">
-              <span className="elyra-imageBuilder-step">02</span>
-              <div>
-                <h4>Build and publish</h4>
-                <p>Choose a registry identity for this image.</p>
-              </div>
+      <div className="jupyter-ml-imageBuilder-workspace">
+        <aside className="jupyter-ml-imageBuilder-rail">
+          <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-buildForm">
+            <div className="jupyter-ml-imageBuilder-sectionHeading">
+              <h4>Build and publish</h4>
             </div>
             <label>
               Image reference
@@ -315,18 +310,15 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
                   ))}
               </select>
             </label>
-            <button className="elyra-imageBuilder-primaryAction" type="button" disabled={loading || startingBuild || !imageReference.trim()} onClick={() => void startBuild()}>
+            <button className="jupyter-ml-imageBuilder-primaryAction" type="button" disabled={loading || startingBuild || !imageReference.trim()} onClick={() => void startBuild()}>
               {startingBuild ? 'Starting build...' : 'Build image'}
             </button>
           </section>
-          <section className="elyra-imageBuilder-card elyra-imageBuilder-credentials">
-            <div className="elyra-imageBuilder-sectionHeading">
-              <span className="elyra-imageBuilder-step">03</span>
-              <div>
-                <h4>Personal registry credentials</h4>
-                <p>Credentials remain private to your Jupyter account.</p>
-              </div>
+          <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-credentials">
+            <div className="jupyter-ml-imageBuilder-sectionHeading">
+              <h4>Personal registry credentials</h4>
             </div>
+            <p className="jupyter-ml-imageBuilder-hint">Credentials remain private to your Jupyter account.</p>
             <label>
               Display name
               <input value={credentialName} onChange={(event) => setCredentialName(event.target.value)} />
@@ -343,7 +335,7 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
               Access token
               <input type="password" value={registryToken} onChange={(event) => setRegistryToken(event.target.value)} />
             </label>
-            <div className="elyra-imageBuilder-buttonRow">
+            <div className="jupyter-ml-imageBuilder-buttonRow">
               <button
                 type="button"
                 disabled={!credentialName.trim() || !registryUrl.trim() || !registryUsername.trim() || (!editingCredentialId && !registryToken)}
@@ -353,7 +345,7 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
               </button>
               {editingCredentialId ? <button type="button" onClick={resetCredentialForm}>Cancel edit</button> : null}
             </div>
-            <ul className="elyra-imageBuilder-credentialList">
+            <ul className="jupyter-ml-imageBuilder-credentialList">
               {credentials
                 .filter((credential) => credential.source === 'user')
                 .map((credential) => (
@@ -368,19 +360,15 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
             </ul>
           </section>
         </aside>
-        <section className="elyra-imageBuilder-card elyra-imageBuilder-authoring">
-          <div className="elyra-imageBuilder-sectionHeading">
-            <span className="elyra-imageBuilder-step">01</span>
-            <div>
-              <h4>Author Dockerfile</h4>
-              <p>Keep the build definition with the pipeline workspace.</p>
-            </div>
+        <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-authoring">
+          <div className="jupyter-ml-imageBuilder-sectionHeading">
+            <h4>Author Dockerfile</h4>
           </div>
           <label>
             Dockerfile path
             <input value={dockerfilePath} onChange={(event) => setDockerfilePath(event.target.value)} />
           </label>
-          <div className="elyra-imageBuilder-buttonRow">
+          <div className="jupyter-ml-imageBuilder-buttonRow">
             <button type="button" onClick={() => void loadDockerfile()}>
               Open
             </button>
@@ -400,47 +388,42 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
           />
         </section>
       </div>
-      <section className="elyra-imageBuilder-card elyra-imageBuilder-history">
-        <div className="elyra-imageBuilder-sectionHeading">
-          <span className="elyra-imageBuilder-step">04</span>
-          <div>
-            <h4>Build history</h4>
-            <p>Inspect progress, delivery state, and build output.</p>
-          </div>
+      <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-history">
+        <div className="jupyter-ml-imageBuilder-sectionHeading">
+          <h4>Build history</h4>
         </div>
-        {builds.length === 0 ? <p className="elyra-imageBuilder-empty">No image builds recorded.</p> : null}
+        {builds.length === 0 ? <p className="jupyter-ml-imageBuilder-empty">No image builds recorded.</p> : null}
         <ul>
           {builds.map((build) => (
             <li key={build.id}>
               <button
-                className={selectedBuild?.id === build.id ? 'elyra-imageBuilder-historyItem is-selected' : 'elyra-imageBuilder-historyItem'}
+                className={selectedBuild?.id === build.id ? 'jupyter-ml-imageBuilder-historyItem is-selected' : 'jupyter-ml-imageBuilder-historyItem'}
                 type="button"
                 aria-pressed={selectedBuild?.id === build.id}
                 onClick={() => void selectBuild(build)}
               >
                 <span>{build.image_reference}</span>
-                <span className={`elyra-imageBuilder-status is-${build.status}`}>{build.status}</span>
+                <span className={`jupyter-ml-imageBuilder-status is-${build.status}`}>{build.status}</span>
               </button>
             </li>
           ))}
         </ul>
       </section>
       {selectedBuild ? (
-        <section className="elyra-imageBuilder-card elyra-imageBuilder-detail">
-          <div className="elyra-imageBuilder-detailHeading">
+        <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-detail">
+          <div className="jupyter-ml-imageBuilder-detailHeading">
             <div>
-              <p className="elyra-imageBuilder-eyebrow">Selected build</p>
               <h4>{selectedBuild.image_reference}</h4>
             </div>
-            <span className={`elyra-imageBuilder-status is-${selectedBuild.status}`}>{selectedBuild.status}</span>
+            <span className={`jupyter-ml-imageBuilder-status is-${selectedBuild.status}`}>{selectedBuild.status}</span>
           </div>
-          {selectedBuild.error_summary ? <p className="elyra-imageBuilder-error">{selectedBuild.error_summary}</p> : null}
-          <div className="elyra-imageBuilder-buttonRow">
+          {selectedBuild.error_summary ? <p className="jupyter-ml-imageBuilder-error">{selectedBuild.error_summary}</p> : null}
+          <div className="jupyter-ml-imageBuilder-buttonRow">
             {isActive(selectedBuild) ? <button type="button" disabled={Boolean(pendingAction)} onClick={() => void stopBuild()}>{pendingAction === 'stop' ? 'Stopping build...' : 'Stop build'}</button> : null}
-            {selectedBuild.status === 'succeeded' ? <button className="elyra-imageBuilder-primaryAction" type="button" disabled={Boolean(pendingAction)} onClick={() => void pushBuild()}>{pendingAction === 'push' ? 'Pushing image...' : 'Push image'}</button> : null}
+            {selectedBuild.status === 'succeeded' ? <button className="jupyter-ml-imageBuilder-primaryAction" type="button" disabled={Boolean(pendingAction)} onClick={() => void pushBuild()}>{pendingAction === 'push' ? 'Pushing image...' : 'Push image'}</button> : null}
           </div>
           {selectedBuild.status === 'pushed' ? (
-            <div className="elyra-imageBuilder-runtimeForm">
+            <div className="jupyter-ml-imageBuilder-runtimeForm">
               <h5>Add to Runtime Images</h5>
               <label>
                 Runtime Image name

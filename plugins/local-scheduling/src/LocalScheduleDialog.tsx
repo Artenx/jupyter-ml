@@ -57,7 +57,7 @@ export const LocalScheduleDialog: React.FC<ILocalScheduleDialogProps> = ({
   }
 }) => {
   return (
-    <form className="elyra-dialog-form">
+    <form className="jupyter-ml-dialog-form">
       <label htmlFor="local_schedule_name">Schedule name:</label>
       <br />
       <input
@@ -78,18 +78,18 @@ export const LocalScheduleDialog: React.FC<ILocalScheduleDialogProps> = ({
         defaultValue={cronExpression}
         data-form-required
       />
-      <p className="elyra-localSchedule-hint">
+      <p className="jupyter-ml-localSchedule-hint">
         Five fields: minute hour day-of-month month day-of-week
       </p>
       <input
         id="local_schedule_enabled"
         name="enabled"
         type="checkbox"
-        className="elyra-Dialog-checkbox"
+        className="jupyter-ml-Dialog-checkbox"
         defaultChecked={enabled}
       />
       <label htmlFor="local_schedule_enabled">Enabled</label>
-      <fieldset className="elyra-localSchedule-retry">
+      <fieldset className="jupyter-ml-localSchedule-retry">
         <legend>Retry policy</legend>
         <label htmlFor="local_schedule_retry_attempts">Maximum attempts:</label>
         <input id="local_schedule_retry_attempts" name="retry_max_attempts" type="number" min="1" defaultValue={retryPolicy.max_attempts} />

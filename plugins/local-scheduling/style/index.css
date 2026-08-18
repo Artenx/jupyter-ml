@@ -14,33 +14,33 @@
  * limitations under the License.
  */
 
-input.elyra-Dialog-checkbox.jp-mod-styled {
+input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   appearance: auto;
   -moz-appearance: checkbox;
   -webkit-appearance: checkbox;
   height: auto;
 }
 
-.elyra-dialog-form {
+.jupyter-ml-dialog-form {
   max-width: 700px;
 }
 
-.elyra-dialog-form input:not([type='checkbox']) {
+.jupyter-ml-dialog-form input:not([type='checkbox']) {
   width: 100%;
 }
 
-.elyra-dialog-form input,
-.elyra-dialog-form select.jp-mod-styled {
-  border-radius: 4px;
+.jupyter-ml-dialog-form input,
+.jupyter-ml-dialog-form select.jp-mod-styled {
+  border-radius: 2px;
 }
 
-.elyra-localSchedule-hint {
+.jupyter-ml-localSchedule-hint {
   color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size0);
   margin: 4px 0 12px;
 }
 
-.elyra-localSchedule-retry {
+.jupyter-ml-localSchedule-retry {
   border: 1px solid var(--jp-border-color2);
   display: grid;
   gap: 6px;
@@ -48,55 +48,73 @@ input.elyra-Dialog-checkbox.jp-mod-styled {
   padding: 8px;
 }
 
-.elyra-localSchedule-retry input {
+.jupyter-ml-localSchedule-retry input {
   width: 100%;
 }
 
-.elyra-localSchedules {
+.jupyter-ml-localSchedules {
   color: var(--jp-ui-font-color1);
   padding: 8px;
 }
 
-.elyra-localSchedules-header,
-.elyra-localSchedules-actions {
+.jupyter-ml-localSchedules-header,
+.jupyter-ml-localSchedules-actions {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
 }
 
-.elyra-localSchedules-header {
+.jupyter-ml-localSchedules-header {
   justify-content: space-between;
 }
 
-.elyra-localSchedules-runHeader {
+.jupyter-ml-localSchedules-empty {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size1);
+  margin: 8px 0;
+}
+
+.jupyter-ml-localSchedules-hint {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  margin: 4px 0;
+}
+
+.jupyter-ml-localSchedules-runHeader {
   align-items: center;
+  border-bottom: 1px solid var(--jp-border-color2);
   display: flex;
   gap: 8px;
   justify-content: space-between;
+  margin: 8px 0 6px;
+  padding-bottom: 6px;
 }
 
-.elyra-localSchedules-runHeader h3 {
-  margin: 12px 0 6px;
+.jupyter-ml-localSchedules-runHeader h3 {
+  font-size: var(--jp-ui-font-size1);
+  font-weight: 600;
+  margin: 0;
 }
 
-.elyra-localSchedules-runHeader label {
+.jupyter-ml-localSchedules-runHeader label {
+  color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size0);
 }
 
-.elyra-localSchedules-runHeader select {
+.jupyter-ml-localSchedules-runHeader select {
   margin-left: 4px;
-  max-width: 95px;
+  max-width: 110px;
 }
 
-.elyra-localSchedules-list,
-.elyra-localSchedules-runs {
+.jupyter-ml-localSchedules-list,
+.jupyter-ml-localSchedules-runs {
   list-style: none;
   margin: 8px 0;
   padding: 0;
 }
 
-.elyra-localSchedules-list button,
-.elyra-localSchedules-runs button {
+.jupyter-ml-localSchedules-list button,
+.jupyter-ml-localSchedules-runs button {
   background: transparent;
   border: 1px solid var(--jp-border-color2);
   color: inherit;
@@ -107,24 +125,108 @@ input.elyra-Dialog-checkbox.jp-mod-styled {
   width: 100%;
 }
 
-.elyra-localSchedules-list button.is-selected {
+.jupyter-ml-localSchedules-list button:hover,
+.jupyter-ml-localSchedules-runs button:hover {
   background: var(--jp-layout-color2);
+}
+
+.jupyter-ml-localSchedules-list button.is-selected,
+.jupyter-ml-localSchedules-runs button.is-selected {
+  background: var(--jp-editor-selected-background);
   border-color: var(--jp-brand-color1);
 }
 
-.elyra-localSchedules-list span {
+.jupyter-ml-localSchedules-itemTitle {
+  color: var(--jp-ui-font-color0);
+  display: block;
+  font-weight: 600;
+}
+
+.jupyter-ml-localSchedules-itemMeta {
+  color: var(--jp-ui-font-color2);
   display: block;
   font-size: var(--jp-ui-font-size0);
   margin-top: 2px;
 }
 
-.elyra-localSchedules-logs {
+.jupyter-ml-localSchedules-itemRow {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.jupyter-ml-localSchedules-itemRow .jupyter-ml-localSchedules-itemMeta {
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jupyter-ml-localSchedules-runs button .jupyter-ml-localSchedules-itemRow {
+  margin-top: 0;
+}
+
+.jupyter-ml-status {
+  border: 1px solid currentColor;
+  display: inline-block;
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  padding: 3px 5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.jupyter-ml-status.is-succeeded,
+.jupyter-ml-status.is-enabled {
+  color: var(--jp-success-color1);
+}
+
+.jupyter-ml-status.is-failed,
+.jupyter-ml-status.is-stopped {
+  color: var(--jp-error-color1);
+}
+
+.jupyter-ml-status.is-running,
+.jupyter-ml-status.is-queued,
+.jupyter-ml-status.is-retrying {
+  color: var(--jp-warn-color1);
+}
+
+.jupyter-ml-status.is-disabled {
+  color: var(--jp-ui-font-color3);
+}
+
+.jupyter-ml-localSchedules-error {
+  background: var(--jp-rendermime-error-background);
+  border-left: 3px solid var(--jp-error-color1);
+  font-size: var(--jp-ui-font-size0);
+  margin: 4px 0;
+  padding: 4px 8px;
+}
+
+.jupyter-ml-localSchedules-logs {
+  background: var(--jp-cell-editor-background);
+  border: 1px solid var(--jp-border-color2);
+  color: var(--jp-ui-font-color0);
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  line-height: 1.55;
+  margin: 6px 0;
   max-height: 240px;
   overflow: auto;
+  padding: 8px;
   white-space: pre-wrap;
 }
 
-.elyra-localSchedules-results {
+.jupyter-ml-localSchedules-results {
   margin: 8px 0;
   padding-left: 20px;
+}
+
+.jupyter-ml-localSchedules h3 {
+  font-size: var(--jp-ui-font-size1);
 }

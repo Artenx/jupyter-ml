@@ -15,94 +15,77 @@
  */
 
 /* Dockerfile image builder workbench */
-.elyra-dockerfileImageBuilder {
+.jupyter-ml-dockerfileImageBuilder {
   color: var(--jp-ui-font-color1);
-  margin: 16px 0 24px;
+  margin: 0;
   max-width: 1180px;
+  padding: 12px 16px 20px;
 }
 
-.elyra-imageBuilder-header {
+.jupyter-ml-imageBuilder-header {
   align-items: flex-start;
-  background: linear-gradient(135deg, var(--jp-layout-color2), var(--jp-layout-color1));
-  border: 1px solid var(--jp-border-color1);
-  border-left: 4px solid var(--jp-brand-color1);
   display: flex;
-  gap: 20px;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding: 20px 22px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
-.elyra-imageBuilder-header h3,
-.elyra-imageBuilder-sectionHeading h4,
-.elyra-imageBuilder-detailHeading h4 {
+.jupyter-ml-imageBuilder-header h3 {
   color: var(--jp-ui-font-color0);
+  font-size: var(--jp-ui-font-size2);
   margin: 0;
 }
 
-.elyra-imageBuilder-eyebrow {
-  color: var(--jp-brand-color1);
-  font-size: var(--jp-ui-font-size0);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  margin: 0 0 5px;
-  text-transform: uppercase;
-}
-
-.elyra-imageBuilder-subtitle,
-.elyra-imageBuilder-sectionHeading p {
+.jupyter-ml-imageBuilder-subtitle {
   color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size1);
-  margin: 6px 0 0;
+  margin: 4px 0 0;
 }
 
-.elyra-imageBuilder-workspace {
+.jupyter-ml-imageBuilder-workspace {
   align-items: start;
   display: grid;
   gap: 16px;
   grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.55fr);
 }
 
-.elyra-imageBuilder-rail {
+.jupyter-ml-imageBuilder-rail {
   display: grid;
   gap: 16px;
 }
 
-.elyra-imageBuilder-card {
+.jupyter-ml-imageBuilder-card {
   background: var(--jp-layout-color1);
-  border: 1px solid var(--jp-border-color1);
+  border: 1px solid var(--jp-border-color2);
   box-sizing: border-box;
   margin-bottom: 16px;
-  padding: 18px;
+  padding: 14px;
 }
 
-.elyra-imageBuilder-workspace .elyra-imageBuilder-card {
+.jupyter-ml-imageBuilder-workspace .jupyter-ml-imageBuilder-card {
   margin-bottom: 0;
 }
 
-.elyra-imageBuilder-sectionHeading,
-.elyra-imageBuilder-detailHeading {
-  align-items: flex-start;
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
+.jupyter-ml-imageBuilder-sectionHeading {
+  border-bottom: 1px solid var(--jp-border-color2);
+  margin-bottom: 12px;
+  padding-bottom: 6px;
 }
 
-.elyra-imageBuilder-step {
-  align-items: center;
-  background: var(--jp-brand-color1);
-  color: var(--jp-inverse-layout-color0);
-  display: inline-flex;
-  flex: 0 0 auto;
-  font-family: var(--jp-code-font-family);
+.jupyter-ml-imageBuilder-sectionHeading h4 {
+  color: var(--jp-ui-font-color0);
+  font-size: var(--jp-ui-font-size1);
+  font-weight: 600;
+  margin: 0;
+}
+
+.jupyter-ml-imageBuilder-hint {
+  color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size0);
-  font-weight: 700;
-  height: 25px;
-  justify-content: center;
-  width: 31px;
+  margin: 0 0 10px;
 }
 
-.elyra-dockerfileImageBuilder label {
+.jupyter-ml-dockerfileImageBuilder label {
   color: var(--jp-ui-font-color1);
   display: grid;
   font-size: var(--jp-ui-font-size1);
@@ -111,9 +94,9 @@
   margin: 0 0 13px;
 }
 
-.elyra-dockerfileImageBuilder input,
-.elyra-dockerfileImageBuilder select,
-.elyra-dockerfileImageBuilder textarea {
+.jupyter-ml-dockerfileImageBuilder input,
+.jupyter-ml-dockerfileImageBuilder select,
+.jupyter-ml-dockerfileImageBuilder textarea {
   background: var(--jp-input-background);
   border: 1px solid var(--jp-input-border-color);
   border-radius: 2px;
@@ -125,28 +108,28 @@
   width: 100%;
 }
 
-.elyra-dockerfileImageBuilder textarea {
+.jupyter-ml-dockerfileImageBuilder textarea {
   font-family: var(--jp-code-font-family);
   line-height: 1.5;
   min-height: 290px;
   resize: vertical;
 }
 
-.elyra-dockerfileImageBuilder input:focus,
-.elyra-dockerfileImageBuilder select:focus,
-.elyra-dockerfileImageBuilder textarea:focus {
+.jupyter-ml-dockerfileImageBuilder input:focus,
+.jupyter-ml-dockerfileImageBuilder select:focus,
+.jupyter-ml-dockerfileImageBuilder textarea:focus {
   border-color: var(--jp-brand-color1);
   outline: 1px solid var(--jp-brand-color1);
 }
 
-.elyra-imageBuilder-buttonRow {
+.jupyter-ml-imageBuilder-buttonRow {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
   margin: 0 0 14px;
 }
 
-.elyra-dockerfileImageBuilder button {
+.jupyter-ml-dockerfileImageBuilder button {
   background: var(--jp-layout-color2);
   border: 1px solid var(--jp-border-color1);
   border-radius: 2px;
@@ -157,16 +140,16 @@
   padding: 5px 10px;
 }
 
-.elyra-dockerfileImageBuilder button:hover:not(:disabled) {
+.jupyter-ml-dockerfileImageBuilder button:hover:not(:disabled) {
   background: var(--jp-layout-color3);
 }
 
-.elyra-dockerfileImageBuilder button:disabled {
+.jupyter-ml-dockerfileImageBuilder button:disabled {
   cursor: default;
   opacity: 0.55;
 }
 
-.elyra-dockerfileImageBuilder .elyra-imageBuilder-primaryAction {
+.jupyter-ml-dockerfileImageBuilder .jupyter-ml-imageBuilder-primaryAction {
   background: var(--jp-brand-color1);
   border-color: var(--jp-brand-color1);
   color: var(--jp-inverse-layout-color0);
@@ -174,73 +157,69 @@
   width: 100%;
 }
 
-.elyra-dockerfileImageBuilder .elyra-imageBuilder-primaryAction:hover:not(:disabled) {
+.jupyter-ml-dockerfileImageBuilder .jupyter-ml-imageBuilder-primaryAction:hover:not(:disabled) {
   background: var(--jp-brand-color0);
 }
 
-.elyra-imageBuilder-credentials {
-  border-top: 3px solid var(--jp-border-color2);
-}
-
-.elyra-imageBuilder-credentialList,
-.elyra-imageBuilder-history ul {
+.jupyter-ml-imageBuilder-credentialList,
+.jupyter-ml-imageBuilder-history ul {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.elyra-imageBuilder-credentialList {
+.jupyter-ml-imageBuilder-credentialList {
   border-top: 1px solid var(--jp-border-color2);
   display: grid;
   gap: 8px;
   padding-top: 12px;
 }
 
-.elyra-imageBuilder-credentialList li {
+.jupyter-ml-imageBuilder-credentialList li {
   align-items: center;
   display: flex;
   gap: 8px;
   justify-content: space-between;
 }
 
-.elyra-imageBuilder-credentialList li > span:first-child {
+.jupyter-ml-imageBuilder-credentialList li > span:first-child {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
-.elyra-imageBuilder-credentialList strong,
-.elyra-imageBuilder-credentialList small {
+.jupyter-ml-imageBuilder-credentialList strong,
+.jupyter-ml-imageBuilder-credentialList small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.elyra-imageBuilder-credentialList small {
+.jupyter-ml-imageBuilder-credentialList small {
   color: var(--jp-ui-font-color2);
 }
 
-.elyra-imageBuilder-credentialList li > span:last-child {
+.jupyter-ml-imageBuilder-credentialList li > span:last-child {
   display: flex;
   gap: 4px;
 }
 
-.elyra-imageBuilder-credentialList button {
+.jupyter-ml-imageBuilder-credentialList button {
   font-size: var(--jp-ui-font-size0);
   min-height: 25px;
   padding: 3px 6px;
 }
 
-.elyra-imageBuilder-history {
+.jupyter-ml-imageBuilder-history {
   margin-top: 16px;
 }
 
-.elyra-imageBuilder-history ul {
+.jupyter-ml-imageBuilder-history ul {
   display: grid;
   gap: 7px;
 }
 
-.elyra-imageBuilder-historyItem {
+.jupyter-ml-imageBuilder-historyItem {
   align-items: center;
   display: flex;
   font-family: var(--jp-code-font-family) !important;
@@ -250,18 +229,18 @@
   width: 100%;
 }
 
-.elyra-imageBuilder-historyItem > span:first-child {
+.jupyter-ml-imageBuilder-historyItem > span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.elyra-dockerfileImageBuilder .elyra-imageBuilder-historyItem.is-selected {
+.jupyter-ml-dockerfileImageBuilder .jupyter-ml-imageBuilder-historyItem.is-selected {
   background: var(--jp-editor-selected-background);
   border-color: var(--jp-brand-color1);
 }
 
-.elyra-imageBuilder-status {
+.jupyter-ml-imageBuilder-status {
   border: 1px solid currentColor;
   font-family: var(--jp-ui-font-family);
   font-size: var(--jp-ui-font-size0);
@@ -273,54 +252,61 @@
   white-space: nowrap;
 }
 
-.elyra-imageBuilder-status.is-succeeded,
-.elyra-imageBuilder-status.is-pushed {
+.jupyter-ml-imageBuilder-status.is-succeeded,
+.jupyter-ml-imageBuilder-status.is-pushed {
   color: var(--jp-success-color1);
 }
 
-.elyra-imageBuilder-status.is-failed,
-.elyra-imageBuilder-status.is-stopped {
+.jupyter-ml-imageBuilder-status.is-failed,
+.jupyter-ml-imageBuilder-status.is-stopped {
   color: var(--jp-error-color1);
 }
 
-.elyra-imageBuilder-status.is-running,
-.elyra-imageBuilder-status.is-queued,
-.elyra-imageBuilder-status.is-pushing {
+.jupyter-ml-imageBuilder-status.is-running,
+.jupyter-ml-imageBuilder-status.is-queued,
+.jupyter-ml-imageBuilder-status.is-pushing {
   color: var(--jp-warn-color1);
 }
 
-.elyra-imageBuilder-detailHeading {
+.jupyter-ml-imageBuilder-detailHeading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
   justify-content: space-between;
+  margin-bottom: 12px;
 }
 
-.elyra-imageBuilder-detailHeading > div {
+.jupyter-ml-imageBuilder-detailHeading > div {
   min-width: 0;
 }
 
-.elyra-imageBuilder-detailHeading h4 {
+.jupyter-ml-imageBuilder-detailHeading h4 {
+  color: var(--jp-ui-font-color0);
+  font-size: var(--jp-ui-font-size1);
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.elyra-imageBuilder-error {
+.jupyter-ml-imageBuilder-error {
   background: var(--jp-rendermime-error-background);
   border-left: 3px solid var(--jp-error-color1);
   margin: 0 0 14px;
   padding: 8px 10px;
 }
 
-.elyra-imageBuilder-runtimeForm {
+.jupyter-ml-imageBuilder-runtimeForm {
   border-top: 1px solid var(--jp-border-color2);
   margin: 4px 0 14px;
   padding-top: 14px;
 }
 
-.elyra-imageBuilder-runtimeForm h5 {
+.jupyter-ml-imageBuilder-runtimeForm h5 {
   margin: 0 0 12px;
 }
 
-.elyra-imageBuilder-detail pre {
+.jupyter-ml-imageBuilder-detail pre {
   background: var(--jp-cell-editor-background);
   border: 1px solid var(--jp-border-color2);
   color: var(--jp-ui-font-color0);
@@ -335,22 +321,21 @@
   white-space: pre-wrap;
 }
 
-.elyra-imageBuilder-empty {
+.jupyter-ml-imageBuilder-empty {
   color: var(--jp-ui-font-color2);
   margin: 4px 0 0;
 }
 
 @media (max-width: 820px) {
-  .elyra-imageBuilder-header,
-  .elyra-imageBuilder-workspace {
+  .jupyter-ml-imageBuilder-workspace {
     grid-template-columns: 1fr;
   }
 
-  .elyra-imageBuilder-header {
+  .jupyter-ml-imageBuilder-header {
     display: grid;
   }
 
-  .elyra-imageBuilder-refresh {
+  .jupyter-ml-imageBuilder-refresh {
     justify-self: start;
   }
 }

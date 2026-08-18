@@ -51,7 +51,7 @@ export class LocalRunLogWidget extends ReactWidget {
     this.id = `jupyter-ml-local-run-${run.id}-log`;
     this.title.label = `${run.id}.log`;
     this.title.caption = 'Local pipeline run log';
-    this.addClass('elyra-LocalRunLogWidget');
+    this.addClass('jupyter-ml-LocalRunLogWidget');
   }
 
   setLogs(logs: ILocalRunLogEntry[]): void {
@@ -66,7 +66,7 @@ export class LocalRunLogWidget extends ReactWidget {
           `${entry.timestamp} ${entry.level} ${entry.operation_name ?? ''} ${entry.message}`
       )
       .join('\n');
-    return <pre className="elyra-localSchedules-logs">{content || 'No log entries.'}</pre>;
+    return <pre className="jupyter-ml-localSchedules-logs">{content || 'No log entries.'}</pre>;
   }
 }
 
@@ -346,33 +346,33 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
   );
 
   return (
-    <div className="elyra-localSchedules">
-      <div className="elyra-localSchedules-header">
+    <div className="jupyter-ml-localSchedules">
+      <div className="jupyter-ml-localSchedules-header">
         {onCreate ? (
-          <button type="button" onClick={() => void onCreate()}>
+          <button className="jp-mod-styled" type="button" onClick={() => void onCreate()}>
             Create Local Schedule
           </button>
         ) : null}
-        <button type="button" onClick={() => void loadSchedules()}>
+        <button className="jp-mod-styled" type="button" onClick={() => void loadSchedules()}>
           Refresh
         </button>
       </div>
-      {loading ? <p>Loading local schedules...</p> : null}
+      {loading ? <p className="jupyter-ml-localSchedules-empty">Loading local schedules...</p> : null}
       {!loading && schedules.length === 0 ? (
-        <p>
+        <p className="jupyter-ml-localSchedules-empty">
           No local schedules. Create one from the Pipeline Editor toolbar or
           from here using an open Local pipeline.
         </p>
       ) : null}
-      <ul className="elyra-localSchedules-list">
+      <ul className="jupyter-ml-localSchedules-list">
         <li>
           <button
             type="button"
             className={showDirectRuns ? 'is-selected' : ''}
             onClick={() => void selectDirectRuns()}
           >
-            <strong>Direct Runs</strong>
-            <span>Run Pipeline history</span>
+            <span className="jupyter-ml-localSchedules-itemTitle">Direct Runs</span>
+            <span className="jupyter-ml-localSchedules-itemMeta">Run Pipeline history</span>
           </button>
         </li>
         {schedules.map((schedule) => (
@@ -384,37 +384,41 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
               }
               onClick={() => void selectSchedule(schedule)}
             >
-              <strong>{schedule.display_name}</strong>
-              <span>{schedule.cron_expression}</span>
-              <span>{schedule.enabled ? 'Enabled' : 'Disabled'}</span>
-              <span>Next: {formatLocalScheduleTime(schedule.next_run_at)}</span>
+              <span className="jupyter-ml-localSchedules-itemTitle">{schedule.display_name}</span>
+              <span className="jupyter-ml-localSchedules-itemMeta">{schedule.cron_expression}</span>
+              <span className="jupyter-ml-localSchedules-itemRow">
+                <span className={`jupyter-ml-status is-${schedule.enabled ? 'enabled' : 'disabled'}`}>
+                  {schedule.enabled ? 'Enabled' : 'Disabled'}
+                </span>
+                <span className="jupyter-ml-localSchedules-itemMeta">Next: {formatLocalScheduleTime(schedule.next_run_at)}</span>
+              </span>
             </button>
           </li>
         ))}
       </ul>
       {selectedSchedule || showDirectRuns ? (
-        <section className="elyra-localSchedules-detail">
+        <section className="jupyter-ml-localSchedules-detail">
           {selectedSchedule ? (
-            <div className="elyra-localSchedules-actions">
-              <button type="button" onClick={() => void editSchedule()}>
+            <div className="jupyter-ml-localSchedules-actions">
+              <button className="jp-mod-styled" type="button" onClick={() => void editSchedule()}>
                 Edit
               </button>
-              <button type="button" onClick={() => void runNow()}>
+              <button className="jp-mod-styled" type="button" onClick={() => void runNow()}>
                 Run now
               </button>
-              <button type="button" onClick={() => void toggleSchedule()}>
+              <button className="jp-mod-styled" type="button" onClick={() => void toggleSchedule()}>
                 {selectedSchedule.enabled ? 'Disable' : 'Enable'}
               </button>
-              <button type="button" onClick={() => void deleteSchedule()}>
+              <button className="jp-mod-styled" type="button" onClick={() => void deleteSchedule()}>
                 Delete
               </button>
             </div>
           ) : null}
-          <div className="elyra-localSchedules-runHeader">
+          <div className="jupyter-ml-localSchedules-runHeader">
             <h3>Run History</h3>
             <label>
               Status
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <select className="jp-mod-styled" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                 <option value="all">All</option>
                 <option value="queued">Queued</option>
                 <option value="running">Running</option>
@@ -425,14 +429,19 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
               </select>
             </label>
           </div>
-          {visibleRuns.length === 0 ? <p>No runs recorded.</p> : null}
-          <ul className="elyra-localSchedules-runs">
+          {visibleRuns.length === 0 ? <p className="jupyter-ml-localSchedules-empty">No runs recorded.</p> : null}
+          <ul className="jupyter-ml-localSchedules-runs">
             {visibleRuns.map((run) => (
               <li key={run.id}>
                 <button type="button" onClick={() => void loadLogs(run)}>
-                  {run.status} · {run.trigger_type} · attempt {run.attempt_number} · {formatLocalScheduleTime(run.started_at ?? run.scheduled_at)}
+                  <span className="jupyter-ml-localSchedules-itemRow">
+                    <span className={`jupyter-ml-status is-${run.status}`}>{run.status}</span>
+                    <span className="jupyter-ml-localSchedules-itemMeta">
+                      {run.trigger_type} · attempt {run.attempt_number} · {formatLocalScheduleTime(run.started_at ?? run.scheduled_at)}
+                    </span>
+                  </span>
                 </button>
-                {run.error_summary ? <p>{run.error_summary}</p> : null}
+                {run.error_summary ? <p className="jupyter-ml-localSchedules-error">{run.error_summary}</p> : null}
               </li>
             ))}
           </ul>
@@ -440,11 +449,11 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
             <section>
               <h3>Run Logs: {selectedRun.id}</h3>
               {selectedRun.remote_kernel_id ? (
-                <p>Enterprise Gateway kernel: {selectedRun.remote_kernel_id}</p>
+                <p className="jupyter-ml-localSchedules-hint">Enterprise Gateway kernel: {selectedRun.remote_kernel_id}</p>
               ) : null}
-              {logs.length === 0 ? <p>No log entries.</p> : null}
+              {logs.length === 0 ? <p className="jupyter-ml-localSchedules-empty">No log entries.</p> : null}
               {logs.length > 0 ? (
-                <pre className="elyra-localSchedules-logs">
+                <pre className="jupyter-ml-localSchedules-logs">
                   {logs
                     .map(
                       (entry) =>
@@ -454,7 +463,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
                 </pre>
               ) : null}
               {results.length > 0 ? (
-                <ul className="elyra-localSchedules-results">
+                <ul className="jupyter-ml-localSchedules-results">
                   {results.map((result) => (
                     <li key={result.id}>
                       <a href={result.location} target="_blank" rel="noreferrer">
@@ -464,18 +473,18 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
                   ))}
                 </ul>
               ) : null}
-              <div className="elyra-localSchedules-actions">
+              <div className="jupyter-ml-localSchedules-actions">
                 {selectedSchedule ? (
-                  <button type="button" onClick={() => void retryRun()}>
+                  <button className="jp-mod-styled" type="button" onClick={() => void retryRun()}>
                     Retry
                   </button>
                 ) : null}
                 {selectedRun.status === 'queued' || selectedRun.status === 'running' ? (
-                  <button type="button" onClick={() => void stopRun()}>
+                  <button className="jp-mod-styled" type="button" onClick={() => void stopRun()}>
                     Stop
                   </button>
                 ) : null}
-                <button type="button" onClick={() => void deleteRun()}>
+                <button className="jp-mod-styled" type="button" onClick={() => void deleteRun()}>
                   Delete run
                 </button>
               </div>
@@ -503,7 +512,7 @@ export class LocalSchedulesWidget extends ReactWidget {
     this.onOpenLogs = options?.onOpenLogs;
     this.id = LOCAL_SCHEDULES_WIDGET_ID;
     this.title.caption = 'Local schedules';
-    this.addClass('elyra-LocalSchedulesWidget');
+    this.addClass('jupyter-ml-LocalSchedulesWidget');
   }
 
   render(): JSX.Element {

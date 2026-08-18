@@ -142,9 +142,9 @@ describe('@jupyter-ml/image-builder', () => {
       await act(async () => {
         root.render(React.createElement(DockerfileImageBuilderWidget));
       });
-      expect(container.querySelector('.elyra-imageBuilder-workspace')).not.toBeNull();
-      expect(container.querySelector('.elyra-imageBuilder-authoring')).not.toBeNull();
-      expect(container.querySelector('.elyra-imageBuilder-buildForm')).not.toBeNull();
+      expect(container.querySelector('.jupyter-ml-imageBuilder-workspace')).not.toBeNull();
+      expect(container.querySelector('.jupyter-ml-imageBuilder-authoring')).not.toBeNull();
+      expect(container.querySelector('.jupyter-ml-imageBuilder-buildForm')).not.toBeNull();
       const buildButton = Array.from(container.querySelectorAll('button')).find((button) =>
         button.textContent?.includes('registry.example.com/team/image:latest')
       );
@@ -153,8 +153,8 @@ describe('@jupyter-ml/image-builder', () => {
       });
 
       expect(container.textContent).toContain('Image pushed');
-      expect(container.querySelector('.elyra-imageBuilder-historyItem.is-selected')).not.toBeNull();
-      expect(container.querySelector('.elyra-imageBuilder-status.is-pushed')).not.toBeNull();
+      expect(container.querySelector('.jupyter-ml-imageBuilder-historyItem.is-selected')).not.toBeNull();
+      expect(container.querySelector('.jupyter-ml-imageBuilder-status.is-pushed')).not.toBeNull();
       const registerButton = Array.from(container.querySelectorAll('button')).find(
         (button) => button.textContent === 'Add Runtime Image'
       );

@@ -48,8 +48,6 @@ const extension: JupyterFrontEndPlugin<void> = {
     palette: ICommandPalette,
     restorer: ILayoutRestorer
   ): Promise<void> => {
-    console.log('Jupyter ML - local-scheduling extension is activated!');
-
     const createLocalScheduleFromActiveEditor = async (): Promise<void> => {
       const widget = app.shell.currentWidget as DocumentWidget | null;
       const path = widget?.context?.path;

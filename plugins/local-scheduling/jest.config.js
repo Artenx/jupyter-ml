@@ -48,7 +48,7 @@ module.exports = {
   moduleFileExtensions: ['cjs', 'js', 'json', 'jsx', 'mjs', 'node', 'ts', 'tsx'],
   moduleNameMapper: {
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
-    '\\.(gif|ttf|eot)$': '@jupyterlab/testutils/lib/jest-file-mock.js'
+    '\\.(gif|ttf|eot)$': '@jupyterlab/testing/lib/jest-file-mock.js'
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   setupFiles: ['@jupyterlab/testing/lib/jest-shim.js']

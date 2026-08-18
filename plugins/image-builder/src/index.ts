@@ -40,8 +40,6 @@ const extension: JupyterFrontEndPlugin<void> = {
     app: JupyterFrontEnd,
     palette: ICommandPalette
   ): Promise<void> => {
-    console.log('Jupyter ML - image-builder extension is activated!');
-
     let imageBuilderWidget: ReactWidget | undefined;
 
     const createImageBuilderWidget = (): ReactWidget => {

@@ -33,6 +33,7 @@ from jupyter_ml_scheduling.models import LocalSchedule
 from jupyter_ml_scheduling.models import LocalScheduledRun
 from jupyter_ml_scheduling.models import RetryPolicy
 from jupyter_ml_scheduling.models import RunLogEntry
+from jupyter_ml_scheduling.models import RunResult
 from jupyter_ml_scheduling.processor import LocalPipelineProcessor
 from jupyter_ml_scheduling.processor import LocalPipelineStoppedError
 from jupyter_ml_scheduling.run_store import RunStore
@@ -208,6 +209,10 @@ class LocalPipelineScheduler:
             self.run_store.save(run)
             with self._lock:
                 self._active_schedule_ids.discard(self._active_run_schedule_ids.pop(run.id, ""))
+            # The executor never starts _execute_run for a cancelled queued
+            # future, so its finally block cannot clean these up. Do it here.
+            self._cancel_events.pop(run.id, None)
+            self._futures.pop(run.id, None)
         return True
 
     def _run(self) -> None:
@@ -234,6 +239,13 @@ class LocalPipelineScheduler:
                 continue
             schedule = self.schedule_store.get(run.schedule_id, owner_id=run.owner_id)
             if schedule is None:
+                # The schedule was deleted while_retrying; finalize the run so the
+                # scheduler loop stops re-checking it every cycle.
+                run.status = "failed"
+                run.next_retry_at = None
+                run.finished_at = now
+                run.error_summary = "Schedule was deleted before the retry could run."
+                self.run_store.save(run, now=now)
                 continue
             run.next_retry_at = None
             self.run_store.save(run, now=now)
@@ -342,8 +354,41 @@ class LocalPipelineScheduler:
             run_observer=observer,
             cancel_event=cancel_event,
             remote_kernel_observer=lambda kernel_id: self._save_remote_kernel_id(run, kernel_id),
+            result_observer=lambda location, display_name, kind, operation_name: self._save_run_result(
+                run, location, display_name, kind, operation_name
+            ),
         )
 
     def _save_remote_kernel_id(self, run: LocalScheduledRun, kernel_id: str) -> None:
         run.remote_kernel_id = kernel_id
         self.run_store.save(run)
+        self._save_run_result(
+            run,
+            location=kernel_id,
+            display_name=f"Remote kernel {kernel_id[:8]}",
+            kind="remote_kernel",
+            operation_name=None,
+        )
+
+    def _save_run_result(
+        self,
+        run: LocalScheduledRun,
+        location: str,
+        display_name: str,
+        kind: str,
+        operation_name: Optional[str],
+    ) -> None:
+        try:
+            self.run_store.save_result(
+                RunResult(
+                    id=str(uuid4()),
+                    run_id=run.id,
+                    kind=kind,
+                    location=location,
+                    display_name=display_name,
+                    created_at=datetime.now(),
+                    operation_name=operation_name,
+                )
+            )
+        except ValueError:
+            pass

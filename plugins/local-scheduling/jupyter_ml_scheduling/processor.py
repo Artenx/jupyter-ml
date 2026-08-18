@@ -42,6 +42,8 @@ from elyra.pipeline.local.local_processor import OperationProcessor
 from elyra.pipeline.processor import PipelineProcessor
 from elyra.pipeline.runtime_type import RuntimeProcessorType
 
+RunResultObserver = Callable[[str, str, str, Optional[str]], None]
+
 
 class LocalPipelineStoppedError(RuntimeError):
     """Raised when a managed local pipeline receives a stop request."""
@@ -55,6 +57,7 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
         operation,
         elyra_run_name: str,
         remote_kernel_observer: Optional[Callable[[str], None]] = None,
+        result_observer: Optional[RunResultObserver] = None,
     ):
         filepath = self.get_valid_filepath(operation.filename)
         file_dir = os.path.dirname(filepath)
@@ -88,6 +91,9 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
         duration = t1 - t0
         self.log.debug(f"Execution of {file_name} took {duration:.3f} secs.")
 
+        if result_observer:
+            result_observer(filepath, file_name, "notebook", operation.name)
+
 
 class LocalPipelineProcessor(BaseLocalPipelineProcessor):
     """Local pipeline processor with lifecycle observation and cancellation."""
@@ -112,6 +118,7 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
         run_observer: Optional[Callable[[str, str, Optional[str]], None]] = None,
         cancel_event: Optional[threading.Event] = None,
         remote_kernel_observer: Optional[Callable[[str], None]] = None,
+        result_observer: Optional[RunResultObserver] = None,
     ):
         self.log_pipeline_info(pipeline.name, "processing pipeline")
         self._notify(run_observer, "INFO", "Local pipeline processing started.")
@@ -128,7 +135,9 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
                 self._notify(run_observer, "INFO", "Operation started.", operation.name)
                 operation_processor = self._operation_processor_catalog[operation.classifier]
                 if isinstance(operation_processor, NotebookOperationProcessor):
-                    operation_processor.process(operation, elyra_run_name, remote_kernel_observer)
+                    operation_processor.process(
+                        operation, elyra_run_name, remote_kernel_observer, result_observer
+                    )
                 else:
                     operation_processor.process(operation, elyra_run_name)
                 self.log_pipeline_info(

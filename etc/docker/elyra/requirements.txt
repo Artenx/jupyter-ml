@@ -1,5 +1,0 @@
-#
-# Add packages as required for custom builds
-#
-pandas
-matplotlib

@@ -1,0 +1,130 @@
+/*
+ * Copyright 2018-2026 Elyra Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+input.elyra-Dialog-checkbox.jp-mod-styled {
+  appearance: auto;
+  -moz-appearance: checkbox;
+  -webkit-appearance: checkbox;
+  height: auto;
+}
+
+.elyra-dialog-form {
+  max-width: 700px;
+}
+
+.elyra-dialog-form input:not([type='checkbox']) {
+  width: 100%;
+}
+
+.elyra-dialog-form input,
+.elyra-dialog-form select.jp-mod-styled {
+  border-radius: 4px;
+}
+
+.elyra-localSchedule-hint {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  margin: 4px 0 12px;
+}
+
+.elyra-localSchedule-retry {
+  border: 1px solid var(--jp-border-color2);
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 8px;
+}
+
+.elyra-localSchedule-retry input {
+  width: 100%;
+}
+
+.elyra-localSchedules {
+  color: var(--jp-ui-font-color1);
+  padding: 8px;
+}
+
+.elyra-localSchedules-header,
+.elyra-localSchedules-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.elyra-localSchedules-header {
+  justify-content: space-between;
+}
+
+.elyra-localSchedules-runHeader {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.elyra-localSchedules-runHeader h3 {
+  margin: 12px 0 6px;
+}
+
+.elyra-localSchedules-runHeader label {
+  font-size: var(--jp-ui-font-size0);
+}
+
+.elyra-localSchedules-runHeader select {
+  margin-left: 4px;
+  max-width: 95px;
+}
+
+.elyra-localSchedules-list,
+.elyra-localSchedules-runs {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.elyra-localSchedules-list button,
+.elyra-localSchedules-runs button {
+  background: transparent;
+  border: 1px solid var(--jp-border-color2);
+  color: inherit;
+  cursor: pointer;
+  margin-bottom: 4px;
+  padding: 6px;
+  text-align: left;
+  width: 100%;
+}
+
+.elyra-localSchedules-list button.is-selected {
+  background: var(--jp-layout-color2);
+  border-color: var(--jp-brand-color1);
+}
+
+.elyra-localSchedules-list span {
+  display: block;
+  font-size: var(--jp-ui-font-size0);
+  margin-top: 2px;
+}
+
+.elyra-localSchedules-logs {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.elyra-localSchedules-results {
+  margin: 8px 0;
+  padding-left: 20px;
+}

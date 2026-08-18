@@ -66,16 +66,33 @@ export class RequestHandler {
       settings
     );
 
-    const result = await response[type]();
-
-    if (response.status < 200 || response.status >= 300) {
-      throw result;
-    }
-
+    // No-content (and other empty-body success) responses have no body to
+    // parse; return early before attempting any body extraction.
     if (response.status === 204) {
       return undefined;
     }
 
+    if (response.status < 200 || response.status >= 300) {
+      // Best-effort error body extraction: prefer JSON, fall back to text,
+      // and finally to a minimal object so callers keep HTTP status context.
+      let errorBody: any;
+      try {
+        errorBody = await response.json();
+      } catch {
+        try {
+          const text = await response.text();
+          errorBody = { status: response.status, reason: text || response.statusText };
+        } catch {
+          errorBody = { status: response.status, reason: response.statusText };
+        }
+      }
+      if (errorBody && typeof errorBody === 'object' && errorBody.status === undefined) {
+        errorBody.status = response.status;
+      }
+      throw errorBody;
+    }
+
+    const result = await response[type]();
     return result as T;
   }
 }

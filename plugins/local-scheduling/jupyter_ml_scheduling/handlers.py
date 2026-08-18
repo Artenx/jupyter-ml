@@ -45,8 +45,12 @@ class LocalScheduleBaseHandler(APIHandler):
         """Return a stable identifier for the authenticated Jupyter user."""
         user = self.current_user
         if isinstance(user, dict):
-            return str(user.get("name") or user.get("username"))
-        return str(getattr(user, "username", user))
+            name = user.get("name") or user.get("username")
+        else:
+            name = getattr(user, "username", None)
+        if not name:
+            return "anonymous"
+        return str(name)
 
     async def _validate_pipeline(self, pipeline_definition: Dict[str, Any]) -> None:
         response = await PipelineValidationManager.instance().validate(pipeline_definition)

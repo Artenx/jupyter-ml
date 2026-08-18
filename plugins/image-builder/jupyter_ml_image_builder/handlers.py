@@ -42,8 +42,12 @@ class ImageBuildBaseHandler(HttpErrorMixin, APIHandler):
     def owner_id(self) -> str:
         user = self.current_user
         if isinstance(user, dict):
-            return str(user.get("name") or user.get("username"))
-        return str(getattr(user, "username", user))
+            name = user.get("name") or user.get("username")
+        else:
+            name = getattr(user, "username", None)
+        if not name:
+            return "anonymous"
+        return str(name)
 
     def payload(self) -> Dict[str, Any]:
         payload = self.get_json_body()

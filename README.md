@@ -41,14 +41,21 @@ jupyter server extension enable --py jupyter_ml_image_builder
 ```
 
 The frontend JupyterLab extensions are packaged inside each Python wheel as
-prebuilt labextensions. To build them from source during development:
+prebuilt labextensions. To build them from source during development, first
+install JupyterLab (provides the `jupyter labextension` command), then build
+each extension:
 
 ```bash
+pip install "jupyterlab>=4.4.2,<5"
 cd plugins/local-scheduling
-jlpm install
-jlpm build
+npm install
+npm run build
 jupyter labextension develop . --overwrite
 ```
+
+Each plugin's frontend build (`npm run build`) produces `lib/` via `tsc` and a
+prebuilt labextension under the plugin's Python package directory (configured
+by `jupyterlab.outputDir`), which is then included in the Python wheel.
 
 ## Development
 

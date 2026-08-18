@@ -14,112 +14,85 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# Elyra - AI Agent Guidelines
+# jupyter-ml - AI Agent Guidelines
 
 ## Project Overview
 
-Elyra is a set of AI-centric extensions to JupyterLab Notebooks. It provides
-a visual pipeline editor, batch job execution for notebooks/scripts, reusable
-code snippets, AI assistant integration, and hybrid runtime support.
+jupyter-ml is a set of independent, zero-fork Jupyter extensions built on top
+of the upstream `elyra` package. The repository no longer vendors Elyra source;
+each plugin depends on upstream `elyra` via standard entry-point APIs
+(`jupyter_server.extensions`, `elyra.pipeline.processors`, `papermill.engine`,
+and the Elyra metadata service) and on JupyterLab 4 via prebuilt labextensions.
 
 ## Repository Structure
 
 ```
-elyra/                  # Main Python package
-  airflow/              # Apache Airflow runtime integration
-  api/                  # REST API handlers
-  cli/                  # Command-line interface
-  contents/             # Jupyter contents manager extensions
-  kfp/                  # Kubeflow Pipelines runtime integration
-  metadata/             # Metadata service (schemas, storage, handlers)
-  pipeline/             # Pipeline definition, parsing, and processing
-  templates/            # Jinja2 templates for pipeline generation
-  tests/                # Python unit and integration tests
-  util/                 # Shared utilities
-  elyra_app.py          # Jupyter server extension entry point
-packages/               # TypeScript/JupyterLab frontend extensions
-  code-snippet/         #   Code snippet editor and management
-  metadata/             #   Metadata explorer UI
-  metadata-common/      #   Shared metadata utilities
-  pipeline-editor/      #   Visual pipeline editor
-  python-editor/        #   Python script editor
-  r-editor/             #   R script editor
-  scala-editor/         #   Scala script editor
-  script-debugger/      #   Script debugger integration
-  script-editor/        #   Base script editor (shared by language editors)
-  services/             #   Frontend service clients (API wrappers)
-  theme/                #   Elyra theme extension
-  ui-components/        #   Shared UI components library
-labextensions/          # Pre-built JupyterLab extensions
-cypress/                # End-to-end integration tests (Cypress)
-docs/                   # Sphinx documentation source
-etc/                    # Docker, Kubernetes, and deployment configs
+plugins/
+  local-scheduling/           # jupyter-ml-scheduling Python + @jupyter-ml/local-scheduling
+    jupyter_ml_scheduling/    #   Backend Python package (ExtensionApp, scheduler, handlers)
+    src/                      #   Frontend JupyterLab extension source
+    style/                    #   Frontend styles
+    tests/                    #   Backend pytest suite
+    pyproject.toml            #   Registers server extension, `local` processor, papermill engine
+    package.json              #   JupyterLab extension metadata (outputDir -> jupyter_ml_scheduling/labextension)
+  image-builder/              # jupyter-ml-image-builder Python + @jupyter-ml/image-builder
+    jupyter_ml_image_builder/ #   Backend Python package (ExtensionApp, ImageBuildManager, handlers)
+    src/                      #   Frontend JupyterLab extension source
+    style/                    #   Frontend styles
+    tests/                    #   Backend pytest suite
+    pyproject.toml            #   Registers server extension
+    package.json              #   JupyterLab extension metadata
 ```
+
+Upstream `elyra` and its frontend are never modified or copied. No `elyra/`,
+`packages/`, or `labextensions/` directories exist in this repository.
 
 ## Tech Stack
 
-- **Backend:** Python 3.10+, Jupyter Server, Tornado
+- **Backend:** Python 3.10+, Jupyter Server, Tornado, upstream `elyra`
 - **Frontend:** TypeScript, JupyterLab 4.x, React
-- **Build:** Hatchling (Python), Lerna + Yarn (JS), Makefile orchestration
-- **Testing:** pytest (backend), Jest (frontend unit), Cypress (integration)
-- **Linting:** ruff/black (Python), ESLint + Prettier (TypeScript)
-- **Runtimes:** Apache Airflow, Kubeflow Pipelines
+- **Build:** Hatchling (Python), `tsc` + `jupyter labextension build` (JS)
+- **Testing:** pytest (backend), Jest (frontend)
 
 ## Development Setup
 
 ```bash
-# Install all dependencies and build
-make install-all-dev
+# Backend (each plugin)
+cd plugins/local-scheduling
+pip install -e ".[test]"
+python3 -m pytest
 
-# Run backend tests
-make test-server
-
-# Run frontend unit tests
-make test-ui-unit
-
-# Run integration tests
-make test-integration
-
-# Lint all code
-make lint
+# Frontend (each plugin)
+cd plugins/local-scheduling
+npm install
+./node_modules/.bin/tsc --noEmit
+./node_modules/.bin/jest
+npm run build               # produces lib/ and jupyter_ml_scheduling/labextension
 ```
+
+Building a labextension requires the `jupyterlab` Python package (provides the
+`jupyter labextension` command).
 
 ## Coding Conventions
 
 ### Python
 
-- Follow PEP 8; use `black` for formatting and `ruff` for linting
-- Type annotations are required for all public functions
+- Follow PEP 8; type annotations required for all public functions
 - Use `logging.getLogger(__name__)` instead of `print()`
 - Catch specific exceptions; avoid bare `except:`
-- Use Google-style docstrings for public classes and methods
-- Tests use `pytest` with fixtures; prefer `@pytest.mark.parametrize`
+- Use Google-style docstrings
+- Tests use `pytest` with fixtures
 
 ### TypeScript / JupyterLab
 
-- Follow the existing ESLint + Prettier configuration
-- JupyterLab extensions follow the `@elyra/<extension-name>` namespace
-- Frontend packages are managed via Lerna monorepo in `packages/`
-
-### Dependency Constraints
-
-- **`uuid` (in `packages/pipeline-editor`):** Pinned to `^3.4.0`. The
-  pipeline-editor package is CommonJS (no `"type": "module"` in its
-  `package.json`) and the build uses TypeScript `module: Node16` /
-  `moduleResolution: Node16`. uuid v7+ removed the `./v4` subpath
-  export, and uuid v11+ is ESM-only — both shapes conflict with the
-  package's CJS+Node16 setup. **Do not bump `uuid` past `^3.x`** in
-  this package unless the pipeline-editor is first migrated to ESM
-  (`"type": "module"`) or the tsconfig is switched to a bundler-aware
-  module resolution. If Dependabot opens a uuid major bump PR for
-  this package, close it with a reference to this constraint.
-- The same constraint applies to any other dependency in this
-  package that goes ESM-only; verify CJS support before accepting
-  major version bumps.
+- Follow the ESLint + Prettier configuration in each plugin
+- Extension plugin IDs use the `@jupyter-ml/<extension>` namespace
+- Each plugin is self-contained; do not import from the other plugin
+- Do not depend on `@elyra/*` npm packages (JL3-only, breaks the zero-fork goal)
 
 ### General
 
-- Copyright header required on all source files (Apache 2.0)
+- Copyright header (Apache 2.0) required on all source files
 - **MANDATORY:** Every commit MUST be signed off with `git commit -s`
   (or `git commit --signoff`) to comply with the
   [Developer Certificate of Origin (DCO)](https://developercertificate.org/).
@@ -149,99 +122,35 @@ make lint
 
 ## Key Architectural Concepts
 
-- **Pipeline Editor:** Visual DAG editor for defining ML/data pipelines.
-  Pipeline definitions are JSON files stored in the workspace.
-- **Metadata Service:** Manages runtime configurations, component catalogs,
-  and code snippets. Schemas are defined in `metadata/schemas/`.
-- **Runtime Processors:** Convert visual pipeline definitions into
-  runtime-specific artifacts (Airflow DAGs, KFP pipelines).
-- **Catalog Connectors:** Discover reusable pipeline components from various
-  sources (filesystem, URLs, Airflow packages).
+- **Zero fork:** plugins depend on upstream `elyra`; the local-scheduling
+  plugin overrides the `local` pipeline processor via the
+  `elyra.pipeline.processors` entry point and intercepts
+  `/elyra/pipeline/schedule` submissions to record direct runs. Uninstalling
+  the plugin reverts to upstream behavior.
+- **Independent namespaces:** backend routes live under `/jupyter-ml/local/*`
+  and `/jupyter-ml/images/*`; frontend plugin IDs use `@jupyter-ml/*`.
+- **Frontend packaging:** each frontend builds a prebuilt labextension into its
+  backend package directory (`jupyterlab.outputDir`), included in the wheel.
 
 ## Important Files
 
-- `elyra/elyra_app.py` - Server extension entry point
-- `elyra/pipeline/pipeline.py` - Core pipeline data model
-- `elyra/pipeline/processor.py` - Base pipeline processor
-- `elyra/metadata/manager.py` - Metadata service manager
-- `Makefile` - All build, test, and release targets
-- `pyproject.toml` - Python project configuration
-- `package.json` - JS/TS workspace configuration
-
-## Documentation Tone & Style
-
-When writing or updating documentation in `docs/source/`, follow the
-established tone and style conventions described below.
-
-### Voice
-
-- Use **third-person, impersonal, product-focused** language. The subject
-  should be "Elyra" or the feature itself, not the reader.
-  - *Yes:* "Elyra provides a Pipeline Visual Editor..."
-  - *No:* "We give you a Pipeline Visual Editor..."
-- Address the reader directly with "you" only in **instructional/procedural**
-  sections (installation steps, recipes, troubleshooting), not in conceptual
-  descriptions.
-
-### Tone
-
-- **Formal-neutral and technical.** No humor, colloquialisms, or
-  personality flourishes.
-- **No enthusiasm markers.** Avoid exclamation points, "exciting",
-  "powerful", or other marketing language. Adjectives should be strictly
-  functional (e.g., "enhanced", "reusable", "generic").
-- **Understated warnings.** Use inline `Note:` or `**NOTE:**` blocks
-  rather than dramatic callouts.
-- **Cautious hedging** where appropriate (e.g., "might work but have not
-  been tested").
-
-### Structure
-
-- Use **bulleted and numbered lists** liberally.
-- Follow a **hierarchical heading structure** (H2 > H3 > H4 > H5) for
-  reference-style content.
-- Write procedural sections as **numbered step-by-step** instructions.
-- Include **screenshots and GIFs** as primary illustration where
-  applicable.
-- Add frequent **cross-references** to other doc pages and external
-  resources using relative links.
-- For property/configuration reference sections, use a
-  **definition-style** format: property name followed by a dash and its
-  description.
-
-### Sentence Style
-
-- Prefer **long, information-dense sentences** that pack multiple related
-  concepts together over short, choppy ones.
-- Favor **noun phrases** over verb phrases where natural (e.g., "the
-  conversion of multiple notebooks" rather than "converting multiple
-  notebooks").
-
-### Terminology
-
-- *Italicize* key terms on first use (e.g., _pipeline_, _nodes_,
-  _component_).
-- **Bold** product names and feature names on first mention.
-- Use technical terms (PVC, DAG, KubernetesPodOperator) without
-  simplification — assume a **technically proficient audience** familiar
-  with Jupyter, Kubernetes, and ML pipeline concepts.
-
-### Summary
-
-| Attribute             | Description                                        |
-|-----------------------|----------------------------------------------------|
-| **Formality**         | High — enterprise product documentation style      |
-| **Personality**       | Minimal — intentionally neutral                    |
-| **Audience**          | Intermediate-to-advanced (Jupyter, K8s, ML)        |
-| **Primary mode**      | Reference/procedural, not tutorial/narrative        |
-| **Brevity**           | Low — thorough, sometimes verbose explanations     |
-| **Consistency**       | High — follow the shared template across sections  |
+- `plugins/local-scheduling/jupyter_ml_scheduling/app.py` - ExtensionApp,
+  route registration, scheduler lifecycle
+- `plugins/local-scheduling/jupyter_ml_scheduling/processor.py` - `local`
+  processor override
+- `plugins/local-scheduling/jupyter_ml_scheduling/override.py` - direct run
+  submission interception
+- `plugins/local-scheduling/jupyter_ml_scheduling/handlers.py` - local REST API
+- `plugins/local-scheduling/src/index.ts` - frontend plugin entry point
+- `plugins/image-builder/jupyter_ml_image_builder/app.py` - ExtensionApp
+- `plugins/image-builder/jupyter_ml_image_builder/manager.py` - Docker CLI
+  builds, credentials, Runtime Image registration
+- `plugins/image-builder/src/index.ts` - frontend plugin entry point
 
 ## Testing Guidelines
 
 - All new features must include tests
-- Backend tests go in `elyra/tests/` mirroring the source structure
-- Use `conftest.py` fixtures for shared test setup
-- Integration tests using Cypress are in `cypress/`
-- Run `make test-server` before submitting backend changes
-- Run `make test-ui-unit` before submitting frontend changes
+- Backend tests live in each plugin's `tests/` directory (pytest)
+- Frontend tests live in each plugin's `src/test/` directory (Jest)
+- Verify against upstream `elyra` only (no fork source on `PYTHONPATH`) to
+  prove the zero-fork property; see the top-level README for the exact setup

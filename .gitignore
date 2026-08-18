@@ -41,7 +41,6 @@ var/
 .installed.cfg
 *.egg
 tsconfig.tsbuildinfo
-package-lock.json
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -96,6 +95,7 @@ node_modules
 .yarn/install-state.gz
 
 labextensions/**/labextension/*
+plugins/*/jupyter_ml_*/labextension/
 
 rebuild.ps1
 build.ps1

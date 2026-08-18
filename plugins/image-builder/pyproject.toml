@@ -39,4 +39,12 @@ path = "jupyter_ml_image_builder/_version.py"
 packages = ["jupyter_ml_image_builder"]
 
 [tool.hatch.build.targets.sdist]
-include = ["jupyter_ml_image_builder"]
+include = [
+    "jupyter_ml_image_builder",
+    "src",
+    "style",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json",
+    "jest.config.js",
+]

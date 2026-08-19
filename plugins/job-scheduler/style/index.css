@@ -171,6 +171,17 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   overflow: hidden;
 }
 
+.jupyter-ml-jobScheduler-directRuns {
+  border-bottom: 1px solid var(--jp-border-color2);
+  flex-shrink: 0;
+  margin: 8px 0;
+  padding-bottom: 8px;
+}
+
+.jupyter-ml-jobScheduler-directRuns button {
+  width: 100%;
+}
+
 .jupyter-ml-jobScheduler-list {
   flex: 1;
   min-height: 0;

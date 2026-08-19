@@ -405,17 +405,17 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
           from here using an open Local pipeline.
         </p>
       ) : null}
+      <div className="jupyter-ml-jobScheduler-directRuns">
+        <button
+          type="button"
+          className={showDirectRuns ? 'is-selected' : ''}
+          onClick={() => void selectDirectRuns()}
+        >
+          <span className="jupyter-ml-jobScheduler-itemTitle">Direct Runs</span>
+          <span className="jupyter-ml-jobScheduler-itemMeta">Run Pipeline history</span>
+        </button>
+      </div>
       <ul className="jupyter-ml-jobScheduler-list">
-        <li>
-          <button
-            type="button"
-            className={showDirectRuns ? 'is-selected' : ''}
-            onClick={() => void selectDirectRuns()}
-          >
-            <span className="jupyter-ml-jobScheduler-itemTitle">Direct Runs</span>
-            <span className="jupyter-ml-jobScheduler-itemMeta">Run Pipeline history</span>
-          </button>
-        </li>
         {schedules.map((schedule) => (
           <li key={schedule.id}>
             <button

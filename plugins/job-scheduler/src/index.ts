@@ -103,13 +103,17 @@ const extension: JupyterFrontEndPlugin<void> = {
       onCreate: createJobFromActiveEditor,
       onOpenLogs: (run, logs): void => {
         let logWidget = jobRunLogWidgets.get(run.id);
-        if (!logWidget) {
+        if (!logWidget || logWidget.isDisposed) {
+          if (logWidget && logWidget.isDisposed) {
+            jobRunLogWidgets.delete(run.id);
+          }
           logWidget = new JobRunLogWidget(run, logs);
           jobRunLogWidgets.set(run.id, logWidget);
           logWidget.disposed.connect(() => jobRunLogWidgets.delete(run.id));
           app.shell.add(logWidget, 'main', { mode: 'tab-after' });
         } else {
           logWidget.setLogs(logs);
+          app.shell.add(logWidget, 'main', { mode: 'tab-after' });
         }
         logWidget.activate();
       }

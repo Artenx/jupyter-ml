@@ -38,7 +38,6 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
   onOpenDockerfile
 }) => {
   const [dockerfilePath, setDockerfilePath] = React.useState('Dockerfile');
-  const [content, setContent] = React.useState('');
   const [imageReference, setImageReference] = React.useState('');
   const [credentials, setCredentials] = React.useState<IRegistryCredentialSummary[]>([]);
   const [credentialId, setCredentialId] = React.useState('admin');
@@ -55,6 +54,7 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
   const [loading, setLoading] = React.useState(false);
   const [startingBuild, setStartingBuild] = React.useState(false);
   const [pendingAction, setPendingAction] = React.useState<string>();
+  const [showCredentials, setShowCredentials] = React.useState(false);
   const refreshRequest = React.useRef(0);
   const logRequest = React.useRef(0);
 
@@ -96,41 +96,6 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
     const interval = window.setInterval(() => void refresh(), 2000);
     return () => window.clearInterval(interval);
   }, [selectedBuild?.id, selectedBuild?.status]);
-
-  const loadDockerfile = async (): Promise<void> => {
-    try {
-      const dockerfile = await ImageBuildService.readDockerfile(dockerfilePath);
-      if (dockerfile) {
-        setDockerfilePath(dockerfile.path);
-        setContent(dockerfile.content);
-      }
-    } catch (error) {
-      await reportError(error);
-    }
-  };
-
-  const saveDockerfile = async (): Promise<void> => {
-    try {
-      const dockerfile = await ImageBuildService.saveDockerfile(dockerfilePath, content);
-      if (dockerfile) {
-        setDockerfilePath(dockerfile.path);
-      }
-    } catch (error) {
-      await reportError(error);
-    }
-  };
-
-  const createDockerfile = async (): Promise<void> => {
-    try {
-      const dockerfile = await ImageBuildService.createDockerfile(dockerfilePath, content);
-      if (dockerfile) {
-        setDockerfilePath(dockerfile.path);
-        setContent(dockerfile.content);
-      }
-    } catch (error) {
-      await reportError(error);
-    }
-  };
 
   const startBuild = async (): Promise<void> => {
     if (startingBuild) {
@@ -280,165 +245,236 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
 
   return (
     <section className="jupyter-ml-dockerfileImageBuilder">
-      <header className="jupyter-ml-imageBuilder-header">
-        <div>
-          <h3>Dockerfile Image Builder</h3>
-          <p className="jupyter-ml-imageBuilder-subtitle">Author a Dockerfile, build locally, then publish it as a runtime.</p>
+      {/* Dockerfile Section */}
+      <div className="jupyter-ml-imageBuilder-section">
+        <div className="jupyter-ml-imageBuilder-sectionHeader">
+          <span>Dockerfile</span>
+          <button
+            type="button"
+            className="jp-mod-styled jp-mod-accept"
+            onClick={() => onOpenDockerfile?.(dockerfilePath)}
+            title="Open in editor"
+          >
+            Open
+          </button>
         </div>
-        <button className="jupyter-ml-imageBuilder-refresh jp-mod-styled" type="button" onClick={() => void refresh()}>
-          {loading ? 'Refreshing...' : 'Refresh'}
+        <input
+          className="jupyter-ml-imageBuilder-pathInput"
+          value={dockerfilePath}
+          onChange={(event) => setDockerfilePath(event.target.value)}
+          placeholder="Dockerfile path"
+        />
+      </div>
+
+      {/* Build Configuration */}
+      <div className="jupyter-ml-imageBuilder-section">
+        <div className="jupyter-ml-imageBuilder-sectionHeader">
+          <span>Build</span>
+        </div>
+        <input
+          className="jupyter-ml-imageBuilder-input"
+          value={imageReference}
+          onChange={(event) => setImageReference(event.target.value)}
+          placeholder="Image reference (e.g., myimage:latest)"
+        />
+        <select
+          className="jupyter-ml-imageBuilder-select"
+          value={credentialId}
+          onChange={(event) => setCredentialId(event.target.value)}
+        >
+          <option value="admin">Default credentials</option>
+          {credentials
+            .filter((credential) => credential.source === 'user')
+            .map((credential) => (
+              <option key={credential.id} value={credential.id}>
+                {credential.display_name}
+              </option>
+            ))}
+        </select>
+        <button
+          type="button"
+          className="jupyter-ml-imageBuilder-buildButton"
+          disabled={loading || startingBuild || !imageReference.trim() || !dockerfilePath.trim()}
+          onClick={() => void startBuild()}
+        >
+          {startingBuild ? 'Building...' : 'Build Image'}
         </button>
-      </header>
-      <div className="jupyter-ml-imageBuilder-workspace">
-        <aside className="jupyter-ml-imageBuilder-rail">
-          <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-buildForm">
-            <div className="jupyter-ml-imageBuilder-sectionHeading">
-              <h4>Build and publish</h4>
+      </div>
+
+      {/* Build History */}
+      <div className="jupyter-ml-imageBuilder-section">
+        <div className="jupyter-ml-imageBuilder-sectionHeader">
+          <span>History</span>
+          <button
+            type="button"
+            className="jp-mod-styled"
+            onClick={() => void refresh()}
+            title="Refresh"
+          >
+            ↻
+          </button>
+        </div>
+        {builds.length === 0 ? (
+          <p className="jupyter-ml-imageBuilder-empty">No builds yet</p>
+        ) : (
+          <ul className="jupyter-ml-imageBuilder-buildList">
+            {builds.map((build) => (
+              <li key={build.id}>
+                <button
+                  type="button"
+                  className={`jupyter-ml-imageBuilder-buildItem ${
+                    selectedBuild?.id === build.id ? 'is-selected' : ''
+                  }`}
+                  onClick={() => void selectBuild(build)}
+                >
+                  <span className="jupyter-ml-imageBuilder-buildRef">{build.image_reference}</span>
+                  <span className={`jupyter-ml-imageBuilder-status is-${build.status}`}>
+                    {build.status}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Build Details */}
+      {selectedBuild && (
+        <div className="jupyter-ml-imageBuilder-section">
+          <div className="jupyter-ml-imageBuilder-sectionHeader">
+            <span>Details</span>
+          </div>
+          {selectedBuild.error_summary && (
+            <p className="jupyter-ml-imageBuilder-error">{selectedBuild.error_summary}</p>
+          )}
+          <div className="jupyter-ml-imageBuilder-buttonRow">
+            {isActive(selectedBuild) && (
+              <button
+                type="button"
+                disabled={Boolean(pendingAction)}
+                onClick={() => void stopBuild()}
+              >
+                {pendingAction === 'stop' ? 'Stopping...' : 'Stop'}
+              </button>
+            )}
+            {selectedBuild.status === 'succeeded' && (
+              <button
+                type="button"
+                disabled={Boolean(pendingAction)}
+                onClick={() => void pushBuild()}
+              >
+                {pendingAction === 'push' ? 'Pushing...' : 'Push'}
+              </button>
+            )}
+          </div>
+          {selectedBuild.status === 'pushed' && (
+            <div className="jupyter-ml-imageBuilder-runtimeForm">
+              <input
+                className="jupyter-ml-imageBuilder-input"
+                value={runtimeImageName}
+                onChange={(event) => setRuntimeImageName(event.target.value)}
+                placeholder="Runtime image name"
+              />
+              <input
+                className="jupyter-ml-imageBuilder-input"
+                value={runtimeImageDescription}
+                onChange={(event) => setRuntimeImageDescription(event.target.value)}
+                placeholder="Description (optional)"
+              />
+              <button
+                type="button"
+                disabled={Boolean(pendingAction) || !runtimeImageName.trim()}
+                onClick={() => void registerRuntimeImage()}
+              >
+                {pendingAction === 'register' ? 'Adding...' : 'Add as Runtime'}
+              </button>
             </div>
-            <label>
-              Image reference
-              <input value={imageReference} onChange={(event) => setImageReference(event.target.value)} placeholder="registry.example.com/team/image:tag" />
-            </label>
-            <label>
-              Registry credential
-              <select value={credentialId} onChange={(event) => setCredentialId(event.target.value)}>
-                <option value="admin">Administrator default</option>
-                {credentials
-                  .filter((credential) => credential.source === 'user')
-                  .map((credential) => (
-                    <option key={credential.id} value={credential.id}>
-                      {credential.display_name} ({credential.registry_url})
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <button className="jupyter-ml-imageBuilder-primaryAction" type="button" disabled={loading || startingBuild || !imageReference.trim()} onClick={() => void startBuild()}>
-              {startingBuild ? 'Starting build...' : 'Build image'}
-            </button>
-          </section>
-          <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-credentials">
-            <div className="jupyter-ml-imageBuilder-sectionHeading">
-              <h4>Personal registry credentials</h4>
-            </div>
-            <p className="jupyter-ml-imageBuilder-hint">Credentials remain private to your Jupyter account.</p>
-            <label>
-              Display name
-              <input value={credentialName} onChange={(event) => setCredentialName(event.target.value)} />
-            </label>
-            <label>
-              Registry URL
-              <input value={registryUrl} onChange={(event) => setRegistryUrl(event.target.value)} />
-            </label>
-            <label>
-              Username
-              <input value={registryUsername} onChange={(event) => setRegistryUsername(event.target.value)} />
-            </label>
-            <label>
-              Access token
-              <input type="password" value={registryToken} onChange={(event) => setRegistryToken(event.target.value)} />
-            </label>
+          )}
+          {logs.length > 0 && (
+            <pre className="jupyter-ml-imageBuilder-logs">
+              {logs.map((log) => `${log.timestamp} ${log.level} ${log.message}`).join('\n')}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {/* Credentials (Collapsible) */}
+      <div className="jupyter-ml-imageBuilder-section">
+        <div
+          className="jupyter-ml-imageBuilder-sectionHeader"
+          onClick={() => setShowCredentials(!showCredentials)}
+          style={{ cursor: 'pointer' }}
+        >
+          <span>Credentials {showCredentials ? '▼' : '▶'}</span>
+        </div>
+        {showCredentials && (
+          <>
+            <input
+              className="jupyter-ml-imageBuilder-input"
+              value={credentialName}
+              onChange={(event) => setCredentialName(event.target.value)}
+              placeholder="Display name"
+            />
+            <input
+              className="jupyter-ml-imageBuilder-input"
+              value={registryUrl}
+              onChange={(event) => setRegistryUrl(event.target.value)}
+              placeholder="Registry URL"
+            />
+            <input
+              className="jupyter-ml-imageBuilder-input"
+              value={registryUsername}
+              onChange={(event) => setRegistryUsername(event.target.value)}
+              placeholder="Username"
+            />
+            <input
+              className="jupyter-ml-imageBuilder-input"
+              type="password"
+              value={registryToken}
+              onChange={(event) => setRegistryToken(event.target.value)}
+              placeholder="Token"
+            />
             <div className="jupyter-ml-imageBuilder-buttonRow">
               <button
                 type="button"
-                disabled={!credentialName.trim() || !registryUrl.trim() || !registryUsername.trim() || (!editingCredentialId && !registryToken)}
+                disabled={
+                  !credentialName.trim() ||
+                  !registryUrl.trim() ||
+                  !registryUsername.trim() ||
+                  (!editingCredentialId && !registryToken)
+                }
                 onClick={() => void saveCredential()}
               >
-                {editingCredentialId ? 'Update credential' : 'Save credential'}
+                {editingCredentialId ? 'Update' : 'Save'}
               </button>
-              {editingCredentialId ? <button type="button" onClick={resetCredentialForm}>Cancel edit</button> : null}
+              {editingCredentialId && (
+                <button type="button" onClick={resetCredentialForm}>
+                  Cancel
+                </button>
+              )}
             </div>
-            <ul className="jupyter-ml-imageBuilder-credentialList">
-              {credentials
-                .filter((credential) => credential.source === 'user')
-                .map((credential) => (
-                  <li key={credential.id}>
-                    <span><strong>{credential.display_name}</strong><small>{credential.registry_url}</small></span>
-                    <span>
-                      <button type="button" onClick={() => editCredential(credential)}>Edit</button>
-                      <button type="button" onClick={() => void deleteCredential(credential)}>Delete</button>
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </section>
-        </aside>
-        <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-authoring">
-          <div className="jupyter-ml-imageBuilder-sectionHeading">
-            <h4>Author Dockerfile</h4>
-          </div>
-          <label>
-            Dockerfile path
-            <input value={dockerfilePath} onChange={(event) => setDockerfilePath(event.target.value)} />
-          </label>
-          <div className="jupyter-ml-imageBuilder-buttonRow">
-            <button type="button" onClick={() => void loadDockerfile()}>
-              Load
-            </button>
-            <button type="button" onClick={() => void createDockerfile()}>
-              Create
-            </button>
-            <button type="button" onClick={() => onOpenDockerfile?.(dockerfilePath)}>
-              Edit in Main Area
-            </button>
-          </div>
-        </section>
+            {credentials.filter((c) => c.source === 'user').length > 0 && (
+              <ul className="jupyter-ml-imageBuilder-credentialList">
+                {credentials
+                  .filter((c) => c.source === 'user')
+                  .map((credential) => (
+                    <li key={credential.id}>
+                      <span>{credential.display_name}</span>
+                      <span>
+                        <button type="button" onClick={() => editCredential(credential)}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => void deleteCredential(credential)}>
+                          Delete
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </>
+        )}
       </div>
-      <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-history">
-        <div className="jupyter-ml-imageBuilder-sectionHeading">
-          <h4>Build history</h4>
-        </div>
-        {builds.length === 0 ? <p className="jupyter-ml-imageBuilder-empty">No image builds recorded.</p> : null}
-        <ul>
-          {builds.map((build) => (
-            <li key={build.id}>
-              <button
-                className={selectedBuild?.id === build.id ? 'jupyter-ml-imageBuilder-historyItem is-selected' : 'jupyter-ml-imageBuilder-historyItem'}
-                type="button"
-                aria-pressed={selectedBuild?.id === build.id}
-                onClick={() => void selectBuild(build)}
-              >
-                <span>{build.image_reference}</span>
-                <span className={`jupyter-ml-imageBuilder-status is-${build.status}`}>{build.status}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-      {selectedBuild ? (
-        <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-detail">
-          <div className="jupyter-ml-imageBuilder-detailHeading">
-            <div>
-              <h4>{selectedBuild.image_reference}</h4>
-            </div>
-            <span className={`jupyter-ml-imageBuilder-status is-${selectedBuild.status}`}>{selectedBuild.status}</span>
-          </div>
-          {selectedBuild.error_summary ? <p className="jupyter-ml-imageBuilder-error">{selectedBuild.error_summary}</p> : null}
-          <div className="jupyter-ml-imageBuilder-buttonRow">
-            {isActive(selectedBuild) ? <button type="button" disabled={Boolean(pendingAction)} onClick={() => void stopBuild()}>{pendingAction === 'stop' ? 'Stopping build...' : 'Stop build'}</button> : null}
-            {selectedBuild.status === 'succeeded' ? <button className="jupyter-ml-imageBuilder-primaryAction" type="button" disabled={Boolean(pendingAction)} onClick={() => void pushBuild()}>{pendingAction === 'push' ? 'Pushing image...' : 'Push image'}</button> : null}
-          </div>
-          {selectedBuild.status === 'pushed' ? (
-            <div className="jupyter-ml-imageBuilder-runtimeForm">
-              <h5>Add to Runtime Images</h5>
-              <label>
-                Runtime Image name
-                <input value={runtimeImageName} onChange={(event) => setRuntimeImageName(event.target.value)} />
-              </label>
-              <label>
-                Description
-                <input
-                  value={runtimeImageDescription}
-                  onChange={(event) => setRuntimeImageDescription(event.target.value)}
-                />
-              </label>
-              <button type="button" disabled={Boolean(pendingAction)} onClick={() => void registerRuntimeImage()}>
-                {pendingAction === 'register' ? 'Adding Runtime Image...' : 'Add Runtime Image'}
-              </button>
-            </div>
-          ) : null}
-          <pre aria-label="Build logs">{logs.map((log) => `${log.timestamp} ${log.level} ${log.message}`).join('\n')}</pre>
-        </section>
-      ) : null}
     </section>
   );
 };

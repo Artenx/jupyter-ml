@@ -14,240 +14,174 @@
  * limitations under the License.
  */
 
-/* Dockerfile image builder workbench */
+/* Dockerfile image builder - compact sidebar layout */
 .jupyter-ml-dockerfileImageBuilder {
   color: var(--jp-ui-font-color1);
-  margin: 0;
-  max-width: 1180px;
-  padding: 12px 16px 20px;
-}
-
-.jupyter-ml-imageBuilder-header {
-  align-items: flex-start;
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  overflow-y: auto;
 }
 
-.jupyter-ml-imageBuilder-header h3 {
-  color: var(--jp-ui-font-color0);
-  font-size: var(--jp-ui-font-size2);
-  margin: 0;
-}
-
-.jupyter-ml-imageBuilder-subtitle {
-  color: var(--jp-ui-font-color2);
-  font-size: var(--jp-ui-font-size1);
-  margin: 4px 0 0;
-}
-
-.jupyter-ml-imageBuilder-workspace {
-  align-items: start;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.55fr);
-}
-
-.jupyter-ml-imageBuilder-rail {
-  display: grid;
-  gap: 16px;
-}
-
-.jupyter-ml-imageBuilder-card {
+/* Section containers */
+.jupyter-ml-imageBuilder-section {
   background: var(--jp-layout-color1);
   border: 1px solid var(--jp-border-color2);
-  box-sizing: border-box;
-  margin-bottom: 16px;
-  padding: 14px;
+  border-radius: 2px;
+  padding: 8px;
 }
 
-.jupyter-ml-imageBuilder-workspace .jupyter-ml-imageBuilder-card {
-  margin-bottom: 0;
-}
-
-.jupyter-ml-imageBuilder-sectionHeading {
+.jupyter-ml-imageBuilder-sectionHeader {
+  align-items: center;
   border-bottom: 1px solid var(--jp-border-color2);
-  margin-bottom: 12px;
-  padding-bottom: 6px;
-}
-
-.jupyter-ml-imageBuilder-sectionHeading h4 {
-  color: var(--jp-ui-font-color0);
+  display: flex;
   font-size: var(--jp-ui-font-size1);
   font-weight: 600;
-  margin: 0;
+  justify-content: space-between;
+  margin: -8px -8px 8px -8px;
+  padding: 6px 8px;
+  user-select: none;
 }
 
-.jupyter-ml-imageBuilder-hint {
-  color: var(--jp-ui-font-color2);
+.jupyter-ml-imageBuilder-sectionHeader button {
+  background: transparent;
+  border: none;
+  color: var(--jp-brand-color1);
+  cursor: pointer;
   font-size: var(--jp-ui-font-size0);
-  margin: 0 0 10px;
+  padding: 2px 6px;
 }
 
-.jupyter-ml-dockerfileImageBuilder label {
-  color: var(--jp-ui-font-color1);
-  display: grid;
-  font-size: var(--jp-ui-font-size1);
-  font-weight: 600;
-  gap: 6px;
-  margin: 0 0 13px;
+.jupyter-ml-imageBuilder-sectionHeader button:hover {
+  background: var(--jp-layout-color2);
 }
 
-.jupyter-ml-dockerfileImageBuilder input,
-.jupyter-ml-dockerfileImageBuilder select,
-.jupyter-ml-dockerfileImageBuilder textarea {
+/* Input fields */
+.jupyter-ml-imageBuilder-pathInput,
+.jupyter-ml-imageBuilder-input,
+.jupyter-ml-imageBuilder-select {
   background: var(--jp-input-background);
   border: 1px solid var(--jp-input-border-color);
   border-radius: 2px;
   box-sizing: border-box;
   color: var(--jp-ui-font-color0);
   font: inherit;
-  min-height: 30px;
-  padding: 6px 8px;
+  font-size: var(--jp-ui-font-size1);
+  margin-bottom: 6px;
+  min-height: 26px;
+  padding: 4px 8px;
   width: 100%;
 }
 
-.jupyter-ml-dockerfileImageBuilder textarea {
-  font-family: var(--jp-code-font-family);
-  line-height: 1.5;
-  min-height: 290px;
-  resize: vertical;
-}
-
-.jupyter-ml-dockerfileImageBuilder input:focus,
-.jupyter-ml-dockerfileImageBuilder select:focus,
-.jupyter-ml-dockerfileImageBuilder textarea:focus {
+.jupyter-ml-imageBuilder-pathInput:focus,
+.jupyter-ml-imageBuilder-input:focus,
+.jupyter-ml-imageBuilder-select:focus {
   border-color: var(--jp-brand-color1);
   outline: 1px solid var(--jp-brand-color1);
 }
 
-.jupyter-ml-imageBuilder-buttonRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin: 0 0 14px;
+/* Buttons */
+.jupyter-ml-imageBuilder-buildButton {
+  background: var(--jp-brand-color1);
+  border: 1px solid var(--jp-brand-color1);
+  border-radius: 2px;
+  color: var(--jp-inverse-layout-color0);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--jp-ui-font-size1);
+  font-weight: 600;
+  min-height: 28px;
+  padding: 4px 12px;
+  width: 100%;
 }
 
-.jupyter-ml-dockerfileImageBuilder button {
+.jupyter-ml-imageBuilder-buildButton:hover:not(:disabled) {
+  background: var(--jp-brand-color0);
+}
+
+.jupyter-ml-imageBuilder-buildButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.jupyter-ml-imageBuilder-buttonRow {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.jupyter-ml-imageBuilder-buttonRow button {
   background: var(--jp-layout-color2);
   border: 1px solid var(--jp-border-color1);
   border-radius: 2px;
   color: var(--jp-ui-font-color0);
   cursor: pointer;
+  flex: 1;
   font: inherit;
-  min-height: 30px;
-  padding: 5px 10px;
+  font-size: var(--jp-ui-font-size0);
+  min-height: 24px;
+  padding: 3px 8px;
 }
 
-.jupyter-ml-dockerfileImageBuilder button:hover:not(:disabled) {
+.jupyter-ml-imageBuilder-buttonRow button:hover:not(:disabled) {
   background: var(--jp-layout-color3);
 }
 
-.jupyter-ml-dockerfileImageBuilder button:disabled {
+.jupyter-ml-imageBuilder-buttonRow button:disabled {
   cursor: default;
   opacity: 0.55;
 }
 
-.jupyter-ml-dockerfileImageBuilder .jupyter-ml-imageBuilder-primaryAction {
-  background: var(--jp-brand-color1);
-  border-color: var(--jp-brand-color1);
-  color: var(--jp-inverse-layout-color0);
-  font-weight: 700;
-  width: 100%;
-}
-
-.jupyter-ml-dockerfileImageBuilder .jupyter-ml-imageBuilder-primaryAction:hover:not(:disabled) {
-  background: var(--jp-brand-color0);
-}
-
-.jupyter-ml-imageBuilder-credentialList,
-.jupyter-ml-imageBuilder-history ul {
+/* Build history list */
+.jupyter-ml-imageBuilder-buildList {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.jupyter-ml-imageBuilder-credentialList {
-  border-top: 1px solid var(--jp-border-color2);
-  display: grid;
-  gap: 8px;
-  padding-top: 12px;
-}
-
-.jupyter-ml-imageBuilder-credentialList li {
+.jupyter-ml-imageBuilder-buildItem {
   align-items: center;
+  background: transparent;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 2px;
+  cursor: pointer;
   display: flex;
   gap: 8px;
   justify-content: space-between;
-}
-
-.jupyter-ml-imageBuilder-credentialList li > span:first-child {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
-.jupyter-ml-imageBuilder-credentialList strong,
-.jupyter-ml-imageBuilder-credentialList small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.jupyter-ml-imageBuilder-credentialList small {
-  color: var(--jp-ui-font-color2);
-}
-
-.jupyter-ml-imageBuilder-credentialList li > span:last-child {
-  display: flex;
-  gap: 4px;
-}
-
-.jupyter-ml-imageBuilder-credentialList button {
-  font-size: var(--jp-ui-font-size0);
-  min-height: 25px;
-  padding: 3px 6px;
-}
-
-.jupyter-ml-imageBuilder-history {
-  margin-top: 16px;
-}
-
-.jupyter-ml-imageBuilder-history ul {
-  display: grid;
-  gap: 7px;
-}
-
-.jupyter-ml-imageBuilder-historyItem {
-  align-items: center;
-  display: flex;
-  font-family: var(--jp-code-font-family) !important;
-  gap: 12px;
-  justify-content: space-between;
+  margin-bottom: 4px;
+  padding: 6px 8px;
   text-align: left;
   width: 100%;
 }
 
-.jupyter-ml-imageBuilder-historyItem > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.jupyter-ml-imageBuilder-buildItem:hover {
+  background: var(--jp-layout-color2);
 }
 
-.jupyter-ml-dockerfileImageBuilder .jupyter-ml-imageBuilder-historyItem.is-selected {
+.jupyter-ml-imageBuilder-buildItem.is-selected {
   background: var(--jp-editor-selected-background);
   border-color: var(--jp-brand-color1);
 }
 
+.jupyter-ml-imageBuilder-buildRef {
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-ui-font-size0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* Status badges */
 .jupyter-ml-imageBuilder-status {
   border: 1px solid currentColor;
   font-family: var(--jp-ui-font-family);
-  font-size: var(--jp-ui-font-size0);
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 1;
-  padding: 4px 6px;
+  padding: 3px 5px;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -268,74 +202,83 @@
   color: var(--jp-warn-color1);
 }
 
-.jupyter-ml-imageBuilder-detailHeading {
+/* Error message */
+.jupyter-ml-imageBuilder-error {
+  background: var(--jp-rendermime-error-background);
+  border-left: 3px solid var(--jp-error-color1);
+  font-size: var(--jp-ui-font-size0);
+  margin: 0 0 8px;
+  padding: 6px 8px;
+}
+
+/* Runtime image form */
+.jupyter-ml-imageBuilder-runtimeForm {
+  border-top: 1px solid var(--jp-border-color2);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+/* Build logs */
+.jupyter-ml-imageBuilder-logs {
+  background: var(--jp-cell-editor-background);
+  border: 1px solid var(--jp-border-color2);
+  color: var(--jp-ui-font-color0);
+  font-family: var(--jp-code-font-family);
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 8px 0 0;
+  max-height: 200px;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+}
+
+/* Credential list */
+.jupyter-ml-imageBuilder-credentialList {
+  border-top: 1px solid var(--jp-border-color2);
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+}
+
+.jupyter-ml-imageBuilder-credentialList li {
   align-items: center;
   display: flex;
-  gap: 10px;
+  font-size: var(--jp-ui-font-size0);
+  gap: 6px;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
-.jupyter-ml-imageBuilder-detailHeading > div {
-  min-width: 0;
-}
-
-.jupyter-ml-imageBuilder-detailHeading h4 {
-  color: var(--jp-ui-font-color0);
-  font-size: var(--jp-ui-font-size1);
-  margin: 0;
+.jupyter-ml-imageBuilder-credentialList li span:first-child {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.jupyter-ml-imageBuilder-error {
-  background: var(--jp-rendermime-error-background);
-  border-left: 3px solid var(--jp-error-color1);
-  margin: 0 0 14px;
-  padding: 8px 10px;
+.jupyter-ml-imageBuilder-credentialList li span:last-child {
+  display: flex;
+  gap: 4px;
 }
 
-.jupyter-ml-imageBuilder-runtimeForm {
-  border-top: 1px solid var(--jp-border-color2);
-  margin: 4px 0 14px;
-  padding-top: 14px;
-}
-
-.jupyter-ml-imageBuilder-runtimeForm h5 {
-  margin: 0 0 12px;
-}
-
-.jupyter-ml-imageBuilder-detail pre {
-  background: var(--jp-cell-editor-background);
+.jupyter-ml-imageBuilder-credentialList button {
+  background: transparent;
   border: 1px solid var(--jp-border-color2);
-  color: var(--jp-ui-font-color0);
-  font-family: var(--jp-code-font-family);
-  font-size: var(--jp-code-font-size);
-  line-height: 1.55;
-  margin: 0;
-  max-height: 340px;
-  min-height: 72px;
-  overflow: auto;
-  padding: 12px;
-  white-space: pre-wrap;
+  border-radius: 2px;
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 6px;
 }
 
+.jupyter-ml-imageBuilder-credentialList button:hover {
+  background: var(--jp-layout-color2);
+}
+
+/* Empty state */
 .jupyter-ml-imageBuilder-empty {
   color: var(--jp-ui-font-color2);
-  margin: 4px 0 0;
-}
-
-@media (max-width: 820px) {
-  .jupyter-ml-imageBuilder-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .jupyter-ml-imageBuilder-header {
-    display: grid;
-  }
-
-  .jupyter-ml-imageBuilder-refresh {
-    justify-self: start;
-  }
+  font-size: var(--jp-ui-font-size0);
+  margin: 4px 0;
 }

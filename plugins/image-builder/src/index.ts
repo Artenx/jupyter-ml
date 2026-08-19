@@ -44,12 +44,19 @@ const extension: JupyterFrontEndPlugin<void> = {
   ): Promise<void> => {
     let imageBuilderWidget: ReactWidget | undefined;
 
+    const openDockerfileInEditor = (path: string): void => {
+      // Open Dockerfile in JupyterLab's built-in editor
+      app.commands.execute('docmanager:open', { path });
+    };
+
     const createImageBuilderWidget = (): ReactWidget => {
       if (imageBuilderWidget) {
         return imageBuilderWidget;
       }
       imageBuilderWidget = ReactWidget.create(
-        React.createElement(DockerfileImageBuilderWidget)
+        React.createElement(DockerfileImageBuilderWidget, {
+          onOpenDockerfile: openDockerfileInEditor
+        })
       );
       imageBuilderWidget.id = WIDGET_ID;
       imageBuilderWidget.title.label = 'Dockerfile Image Builder';
@@ -62,7 +69,9 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     // Add sidebar widget with icon only
     const sidebarWidget = ReactWidget.create(
-      React.createElement(DockerfileImageBuilderWidget)
+      React.createElement(DockerfileImageBuilderWidget, {
+        onOpenDockerfile: openDockerfileInEditor
+      })
     );
     sidebarWidget.id = SIDEBAR_WIDGET_ID;
     sidebarWidget.title.icon = dockerIcon;

@@ -26,7 +26,6 @@ from typing import Optional
 from uuid import uuid4
 
 from elyra.pipeline.parser import PipelineParser
-from elyra.pipeline.processor import PipelineProcessorManager
 
 from jupyter_ml_scheduling.models import CronExpression
 from jupyter_ml_scheduling.models import LocalSchedule
@@ -346,9 +345,9 @@ class LocalPipelineScheduler:
         pipeline = PipelineParser(root_dir=str(self.root_dir) if self.root_dir else None).parse(
             schedule.pipeline_definition
         )
-        processor = PipelineProcessorManager.instance().get_processor_for_runtime("local")
-        if not isinstance(processor, LocalPipelineProcessor):
-            raise RuntimeError("The jupyter-ml local pipeline processor is unavailable.")
+        # Instantiate our own processor directly to avoid conflicts with elyra's
+        # built-in LocalPipelineProcessor that also registers under runtime "local".
+        processor = LocalPipelineProcessor(root_dir=str(self.root_dir) if self.root_dir else None)
         processor.process(
             pipeline,
             run_observer=observer,

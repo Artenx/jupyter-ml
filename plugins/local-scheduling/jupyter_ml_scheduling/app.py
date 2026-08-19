@@ -15,9 +15,14 @@
 #
 """Jupyter Server extension for local pipeline scheduling."""
 
+import json
+
 from jupyter_server.extension.application import ExtensionApp
 
+from elyra.pipeline.processor import PipelineProcessorManager
+
 from jupyter_ml_scheduling._version import __version__
+from jupyter_ml_scheduling.processor import LocalPipelineProcessor
 from jupyter_ml_scheduling.handlers import LocalDirectRunsHandler
 from jupyter_ml_scheduling.handlers import LocalRunHandler
 from jupyter_ml_scheduling.handlers import LocalRunLogsHandler
@@ -59,10 +64,69 @@ class LocalSchedulingApp(ExtensionApp):
         ])
 
     def initialize_settings(self):
-        self.log.debug("Initializing Jupyter ML local scheduling settings.")
+        self.log.info("Initializing Jupyter ML local scheduling settings.")
+        # Replace the registry's local processor with ours so the upstream
+        # PipelineSchedulerHandler dispatches local runs through the
+        # lifecycle-observing processor instead of elyra's stock one.
+        try:
+            registry = PipelineProcessorManager.instance()._registry
+            self.log.info(f"Before replace: local processor = {type(registry._processors.get('local')).__name__}")
+            registry._processors["local"] = LocalPipelineProcessor(
+                root_dir=self.settings["server_root_dir"]
+            )
+            self.log.info(f"After replace: local processor = {type(registry._processors.get('local')).__name__}")
+        except Exception as e:
+            self.log.error(f"Failed to replace local processor: {e}", exc_info=True)
         scheduler = LocalPipelineScheduler(root_dir=self.settings["server_root_dir"])
         self.settings["jupyter_ml_scheduling_scheduler"] = scheduler
         scheduler.start()
+
+        # Patch elyra's PipelineSchedulerHandler.post so local runtime
+        # submissions are recorded in the run history. Elyra registers its
+        # /elyra/pipeline/schedule route before our extension loads, so our
+        # handler never matches. Instead we wrap the upstream post() to
+        # intercept local submissions and delegate the rest unchanged.
+        self._patch_scheduler_handler()
+
+        self.log.info("Jupyter ML local scheduling initialized.")
+
+    def _patch_scheduler_handler(self) -> None:
+        """Wrap elyra's PipelineSchedulerHandler.post to record local runs."""
+        from elyra.pipeline.handlers import PipelineSchedulerHandler
+        from elyra.pipeline.parser import PipelineParser
+        from elyra.pipeline.validation import PipelineValidationManager
+
+        scheduler = self.settings["jupyter_ml_scheduling_scheduler"]
+        original_post = PipelineSchedulerHandler.post
+
+        async def patched_post(self_handler, *args, **kwargs):
+            pipeline_definition = self_handler.get_json_body()
+            response = await PipelineValidationManager.instance().validate(pipeline=pipeline_definition)
+            if not response.has_fatal:
+                pipeline = PipelineParser(
+                    root_dir=self_handler.settings["server_root_dir"]
+                ).parse(pipeline_definition)
+                if pipeline.runtime == "local":
+                    user = self_handler.current_user
+                    if isinstance(user, dict):
+                        owner_id = str(user.get("name") or user.get("username"))
+                    else:
+                        owner_id = str(getattr(user, "username", user))
+                    run = scheduler.submit_direct(
+                        pipeline_definition=pipeline_definition,
+                        owner_id=owner_id,
+                        name=pipeline.name,
+                    )
+                    self_handler.log.info(f"Direct run recorded: id={run.id}")
+                    self_handler.set_status(202)
+                    self_handler.set_header("Content-Type", "application/json")
+                    await self_handler.finish(json.dumps(run.to_dict()))
+                    return
+            await original_post(self_handler, *args, **kwargs)
+
+        patched_post.__wrapped__ = original_post
+        PipelineSchedulerHandler.post = patched_post
+        self.log.info("Patched PipelineSchedulerHandler.post to intercept local runs.")
 
     async def stop_extension(self):
         scheduler = self.settings.get("jupyter_ml_scheduling_scheduler")

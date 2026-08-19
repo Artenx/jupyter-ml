@@ -28,6 +28,7 @@ import '../style/index.css';
 const PLUGIN_ID = '@jupyter-ml/image-builder:plugin';
 const COMMAND_OPEN_IMAGE_BUILDER = 'jupyter-ml:open-image-builder';
 const WIDGET_ID = 'jupyter-ml-image-builder';
+const SIDEBAR_WIDGET_ID = 'jupyter-ml-image-builder-sidebar';
 
 /**
  * Initialization data for the image-builder extension.
@@ -57,6 +58,15 @@ const extension: JupyterFrontEndPlugin<void> = {
       });
       return imageBuilderWidget;
     };
+
+    // Add sidebar widget
+    const sidebarWidget = ReactWidget.create(
+      React.createElement(DockerfileImageBuilderWidget)
+    );
+    sidebarWidget.id = SIDEBAR_WIDGET_ID;
+    sidebarWidget.title.label = 'Image Builder';
+    sidebarWidget.title.closable = false;
+    app.shell.add(sidebarWidget, 'left', { rank: 950 });
 
     app.commands.addCommand(COMMAND_OPEN_IMAGE_BUILDER, {
       label: 'Open Dockerfile Image Builder',

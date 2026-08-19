@@ -283,7 +283,6 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       ]);
       setLogs(nextLogs);
       setResults(nextResults);
-      setSelectedRun(run);
       onOpenLogs?.(run, nextLogs);
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);

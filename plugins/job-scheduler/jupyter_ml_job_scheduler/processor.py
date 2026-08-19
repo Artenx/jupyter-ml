@@ -111,17 +111,19 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
             if not hasattr(cell, "outputs"):
                 continue
             for output in cell.outputs:
-                if output.output_type == "stream" and output.get("name") in ("stdout", "stderr"):
-                    text = output.get("text", "")
-                    if text:
-                        level = "WARN" if output.name == "stderr" else "INFO"
+                output_type = getattr(output, "output_type", None) or output.get("output_type")
+                if output_type == "stream":
+                    stream_name = getattr(output, "name", None) or output.get("name")
+                    text = getattr(output, "text", None) or output.get("text", "")
+                    if text and stream_name in ("stdout", "stderr"):
+                        level = "WARN" if stream_name == "stderr" else "INFO"
                         for line in text.rstrip("\n").split("\n"):
                             if line.strip():
                                 output_observer(level, line, operation_name)
-                elif output.output_type in ("error",):
-                    ename = output.get("ename", "")
-                    evalue = output.get("evalue", "")
-                    traceback_lines = output.get("traceback", [])
+                elif output_type in ("error", "display_data", "execute_result"):
+                    ename = getattr(output, "ename", None) or output.get("ename", "")
+                    evalue = getattr(output, "evalue", None) or output.get("evalue", "")
+                    traceback_lines = getattr(output, "traceback", None) or output.get("traceback", [])
                     if ename or evalue:
                         output_observer("ERROR", f"{ename}: {evalue}", operation_name)
                     for tb_line in traceback_lines:

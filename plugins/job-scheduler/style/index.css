@@ -54,8 +54,17 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 
 .jupyter-ml-jobScheduler-retention-mode {
   align-items: center;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
   display: flex;
   gap: 6px;
+  padding: 6px 8px;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.jupyter-ml-jobScheduler-retention-mode:has(input[type='radio']:checked) {
+  background-color: var(--jp-brand-color3);
+  border-color: var(--jp-brand-color1);
 }
 
 .jupyter-ml-jobScheduler-retention-mode input[type='number'] {

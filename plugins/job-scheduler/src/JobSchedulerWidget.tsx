@@ -27,7 +27,6 @@ import {
 } from './JobSchedulerDialog';
 import {
   ILocalRunLogEntry,
-  ILocalRunResult,
   ILocalScheduledRun,
   ILocalSchedule,
   JobSchedulerService,
@@ -138,8 +137,6 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
     React.useState<ILocalSchedule>();
   const [showDirectRuns, setShowDirectRuns] = React.useState(false);
   const [runs, setRuns] = React.useState<ILocalScheduledRun[]>([]);
-  const [logs, setLogs] = React.useState<ILocalRunLogEntry[]>([]);
-  const [results, setResults] = React.useState<ILocalRunResult[]>([]);
   const [selectedRun, setSelectedRun] = React.useState<ILocalScheduledRun>();
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [loading, setLoading] = React.useState(true);
@@ -169,8 +166,6 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
     async (schedule: ILocalSchedule): Promise<void> => {
       try {
         setRuns(await JobSchedulerService.listRuns(schedule.id));
-        setLogs([]);
-        setResults([]);
         setSelectedRun(undefined);
       } catch (error) {
         await RequestErrors.serverError(error as IErrorResponse);
@@ -204,8 +199,6 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
       setShowDirectRuns(true);
       setSelectedSchedule(undefined);
       setRuns(await JobSchedulerService.listDirectRuns());
-      setLogs([]);
-      setResults([]);
       setSelectedRun(undefined);
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);
@@ -289,8 +282,6 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
       await JobSchedulerService.deleteSchedule(selectedSchedule.id);
       setSelectedSchedule(undefined);
       setRuns([]);
-      setLogs([]);
-      setResults([]);
       setSelectedRun(undefined);
       window.dispatchEvent(new Event(JOB_SCHEDULER_CHANGED_EVENT));
     } catch (error) {
@@ -300,12 +291,7 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
 
   const loadLogs = async (run: ILocalScheduledRun): Promise<void> => {
     try {
-      const [nextLogs, nextResults] = await Promise.all([
-        JobSchedulerService.getLogs(run.id),
-        JobSchedulerService.getResults(run.id)
-      ]);
-      setLogs(nextLogs);
-      setResults(nextResults);
+      const nextLogs = await JobSchedulerService.getLogs(run.id);
       onOpenLogs?.(run, nextLogs);
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);
@@ -527,36 +513,6 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
               </li>
             ))}
           </ul>
-          {selectedRun ? (
-            <section>
-              <h3>Run Logs: {selectedRun.id}</h3>
-              {selectedRun.remote_kernel_id ? (
-                <p className="jupyter-ml-jobScheduler-hint">Enterprise Gateway kernel: {selectedRun.remote_kernel_id}</p>
-              ) : null}
-              {logs.length === 0 ? <p className="jupyter-ml-jobScheduler-empty">No log entries.</p> : null}
-              {logs.length > 0 ? (
-                <pre className="jupyter-ml-jobScheduler-logs">
-                  {logs
-                    .map(
-                      (entry) =>
-                        `${entry.timestamp} ${entry.level} ${entry.operation_name ?? ''} ${entry.message}`
-                    )
-                    .join('\n')}
-                </pre>
-              ) : null}
-              {results.length > 0 ? (
-                <ul className="jupyter-ml-jobScheduler-results">
-                  {results.map((result) => (
-                    <li key={result.id}>
-                      <a href={result.location} target="_blank" rel="noreferrer">
-                        {result.display_name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-          ) : null}
         </section>
       ) : null}
       {contextMenu ? (

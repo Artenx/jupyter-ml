@@ -49,7 +49,7 @@ export class LocalRunLogWidget extends ReactWidget {
     super();
     this.logs = logs;
     this.id = `jupyter-ml-local-run-${run.id}-log`;
-    this.title.label = `${run.id}.log`;
+    this.title.label = `Run ${run.id.slice(0, 8)}`;
     this.title.caption = 'Local pipeline run log';
     this.title.closable = true;
     this.addClass('jupyter-ml-LocalRunLogWidget');

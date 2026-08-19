@@ -34,13 +34,13 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   border-radius: 2px;
 }
 
-.jupyter-ml-localSchedule-hint {
+.jupyter-ml-jobScheduler-hint {
   color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size0);
   margin: 4px 0 12px;
 }
 
-.jupyter-ml-localSchedule-retry {
+.jupyter-ml-jobScheduler-retry {
   border: 1px solid var(--jp-border-color2);
   display: grid;
   gap: 6px;
@@ -48,11 +48,11 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   padding: 8px;
 }
 
-.jupyter-ml-localSchedule-retry input {
+.jupyter-ml-jobScheduler-retry input {
   width: 100%;
 }
 
-.jupyter-ml-localSchedules {
+.jupyter-ml-jobScheduler {
   color: var(--jp-ui-font-color1);
   display: flex;
   flex-direction: column;
@@ -61,30 +61,30 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   padding: 8px;
 }
 
-.jupyter-ml-localSchedules-header,
-.jupyter-ml-localSchedules-actions {
+.jupyter-ml-jobScheduler-header,
+.jupyter-ml-jobScheduler-actions {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
 }
 
-.jupyter-ml-localSchedules-header {
+.jupyter-ml-jobScheduler-header {
   justify-content: space-between;
 }
 
-.jupyter-ml-localSchedules-empty {
+.jupyter-ml-jobScheduler-empty {
   color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size1);
   margin: 8px 0;
 }
 
-.jupyter-ml-localSchedules-hint {
+.jupyter-ml-jobScheduler-hint {
   color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size0);
   margin: 4px 0;
 }
 
-.jupyter-ml-localSchedules-runHeader {
+.jupyter-ml-jobScheduler-runHeader {
   align-items: center;
   border-bottom: 1px solid var(--jp-border-color2);
   display: flex;
@@ -94,31 +94,31 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   padding-bottom: 6px;
 }
 
-.jupyter-ml-localSchedules-runHeader h3 {
+.jupyter-ml-jobScheduler-runHeader h3 {
   font-size: var(--jp-ui-font-size1);
   font-weight: 600;
   margin: 0;
 }
 
-.jupyter-ml-localSchedules-runHeader label {
+.jupyter-ml-jobScheduler-runHeader label {
   color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size0);
 }
 
-.jupyter-ml-localSchedules-runHeader select {
+.jupyter-ml-jobScheduler-runHeader select {
   margin-left: 4px;
   max-width: 110px;
 }
 
-.jupyter-ml-localSchedules-list,
-.jupyter-ml-localSchedules-runs {
+.jupyter-ml-jobScheduler-list,
+.jupyter-ml-jobScheduler-runs {
   list-style: none;
   margin: 8px 0;
   padding: 0;
 }
 
-.jupyter-ml-localSchedules-list button,
-.jupyter-ml-localSchedules-runs button {
+.jupyter-ml-jobScheduler-list button,
+.jupyter-ml-jobScheduler-runs button {
   background: transparent;
   border: 1px solid var(--jp-border-color2);
   color: inherit;
@@ -129,31 +129,31 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   width: 100%;
 }
 
-.jupyter-ml-localSchedules-list button:hover,
-.jupyter-ml-localSchedules-runs button:hover {
+.jupyter-ml-jobScheduler-list button:hover,
+.jupyter-ml-jobScheduler-runs button:hover {
   background: var(--jp-layout-color2);
 }
 
-.jupyter-ml-localSchedules-list button.is-selected,
-.jupyter-ml-localSchedules-runs button.is-selected {
+.jupyter-ml-jobScheduler-list button.is-selected,
+.jupyter-ml-jobScheduler-runs button.is-selected {
   background: var(--jp-editor-selected-background);
   border-color: var(--jp-brand-color1);
 }
 
-.jupyter-ml-localSchedules-itemTitle {
+.jupyter-ml-jobScheduler-itemTitle {
   color: var(--jp-ui-font-color0);
   display: block;
   font-weight: 600;
 }
 
-.jupyter-ml-localSchedules-itemMeta {
+.jupyter-ml-jobScheduler-itemMeta {
   color: var(--jp-ui-font-color2);
   display: block;
   font-size: var(--jp-ui-font-size0);
   margin-top: 2px;
 }
 
-.jupyter-ml-localSchedules-itemRow {
+.jupyter-ml-jobScheduler-itemRow {
   align-items: center;
   display: flex;
   gap: 8px;
@@ -161,14 +161,14 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   margin-top: 4px;
 }
 
-.jupyter-ml-localSchedules-itemRow .jupyter-ml-localSchedules-itemMeta {
+.jupyter-ml-jobScheduler-itemRow .jupyter-ml-jobScheduler-itemMeta {
   margin-top: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.jupyter-ml-localSchedules-runs button .jupyter-ml-localSchedules-itemRow {
+.jupyter-ml-jobScheduler-runs button .jupyter-ml-jobScheduler-itemRow {
   margin-top: 0;
 }
 
@@ -204,7 +204,7 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   color: var(--jp-ui-font-color3);
 }
 
-.jupyter-ml-localSchedules-error {
+.jupyter-ml-jobScheduler-error {
   background: var(--jp-rendermime-error-background);
   border-left: 3px solid var(--jp-error-color1);
   font-size: var(--jp-ui-font-size0);
@@ -212,7 +212,7 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   padding: 4px 8px;
 }
 
-.jupyter-ml-localSchedules-logs {
+.jupyter-ml-jobScheduler-logs {
   background: var(--jp-cell-editor-background);
   border: 1px solid var(--jp-border-color2);
   color: var(--jp-ui-font-color0);
@@ -226,11 +226,11 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   white-space: pre-wrap;
 }
 
-.jupyter-ml-localSchedules-results {
+.jupyter-ml-jobScheduler-results {
   margin: 8px 0;
   padding-left: 20px;
 }
 
-.jupyter-ml-localSchedules h3 {
+.jupyter-ml-jobScheduler h3 {
   font-size: var(--jp-ui-font-size1);
 }

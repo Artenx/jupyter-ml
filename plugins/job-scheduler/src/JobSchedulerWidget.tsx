@@ -20,29 +20,29 @@ import * as React from 'react';
 
 import { formDialogWidget } from './formDialogWidget';
 import {
-  ILocalScheduleDialogValue,
-  LocalScheduleDialog,
+  IJobSchedulerDialogValue,
+  JobSchedulerDialog,
   retryPolicyFromDialog
-} from './LocalScheduleDialog';
+} from './JobSchedulerDialog';
 import {
   ILocalRunLogEntry,
   ILocalRunResult,
   ILocalScheduledRun,
   ILocalSchedule,
-  LocalScheduleService,
-  LOCAL_SCHEDULES_CHANGED_EVENT
-} from './LocalScheduleService';
+  JobSchedulerService,
+  JOB_SCHEDULER_CHANGED_EVENT
+} from './JobSchedulerService';
 import { IErrorResponse, RequestErrors } from './requestErrors';
 import { GenericObjectType } from './types';
 
-export const LOCAL_SCHEDULES_WIDGET_ID = 'jupyter-ml-local-schedules';
+export const JOB_SCHEDULER_WIDGET_ID = 'jupyter-ml-job-scheduler';
 
-export const formatLocalScheduleTime = (value: string | null): string => {
+export const formatJobTime = (value: string | null): string => {
   return value ? new Date(value).toLocaleString() : 'Not scheduled';
 };
 
 /** Main-area log view presented with a file-like title for a selected run. */
-export class LocalRunLogWidget extends ReactWidget {
+export class JobRunLogWidget extends ReactWidget {
   private logs: ILocalRunLogEntry[];
 
   constructor(run: ILocalScheduledRun, logs: ILocalRunLogEntry[]) {
@@ -52,7 +52,7 @@ export class LocalRunLogWidget extends ReactWidget {
     this.title.label = `Run ${run.id.slice(0, 8)}`;
     this.title.caption = 'Local pipeline run log';
     this.title.closable = true;
-    this.addClass('jupyter-ml-LocalRunLogWidget');
+    this.addClass('jupyter-ml-JobRunLogWidget');
   }
 
   setLogs(logs: ILocalRunLogEntry[]): void {
@@ -67,12 +67,12 @@ export class LocalRunLogWidget extends ReactWidget {
           `${entry.timestamp} ${entry.level} ${entry.operation_name ?? ''} ${entry.message}`
       )
       .join('\n');
-    return <pre className="jupyter-ml-localSchedules-logs">{content || 'No log entries.'}</pre>;
+    return <pre className="jupyter-ml-jobScheduler-logs">{content || 'No log entries.'}</pre>;
   }
 }
 
 /** Open the create-local-schedule dialog for the supplied pipeline. */
-export const promptCreateLocalSchedule = async (options: {
+export const promptCreateJob = async (options: {
   pipelineJson: GenericObjectType;
   pipelinePath: string;
 }): Promise<void> => {
@@ -81,34 +81,34 @@ export const promptCreateLocalSchedule = async (options: {
     PathExt.extname(options.pipelinePath)
   );
   const result = await showDialog({
-    title: 'Create Local Schedule',
+    title: 'Create Job',
     body: formDialogWidget(
-      <LocalScheduleDialog displayName={pipelineName || 'Local pipeline'} />
+      <JobSchedulerDialog displayName={pipelineName || 'Local pipeline'} />
     ),
     buttons: [Dialog.cancelButton(), Dialog.okButton({ label: 'Create' })],
     defaultButton: 1,
-    focusNodeSelector: '#local_schedule_name'
+    focusNodeSelector: '#job_name'
   });
   if (!result.button.accept || !result.value) {
     return;
   }
   try {
-    await LocalScheduleService.createSchedule({
+    await JobSchedulerService.createSchedule({
       display_name: result.value.display_name,
       pipeline_definition: options.pipelineJson,
       cron_expression: result.value.cron_expression,
       enabled: result.value.enabled,
       retry_policy: retryPolicyFromDialog(
-        result.value as unknown as ILocalScheduleDialogValue
+        result.value as unknown as IJobSchedulerDialogValue
       )
     });
-    window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
+    window.dispatchEvent(new Event(JOB_SCHEDULER_CHANGED_EVENT));
   } catch (error) {
     await RequestErrors.serverError(error as IErrorResponse);
   }
 };
 
-interface ILocalSchedulesPanelProps {
+interface IJobSchedulerPanelProps {
   onCreate?: () => Promise<void>;
   onOpenLogs?: (
     run: ILocalScheduledRun,
@@ -116,7 +116,7 @@ interface ILocalSchedulesPanelProps {
   ) => void;
 }
 
-export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
+export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
   onCreate,
   onOpenLogs
 }) => {
@@ -134,7 +134,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
   const loadSchedules = React.useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
-      const nextSchedules = await LocalScheduleService.listSchedules();
+      const nextSchedules = await JobSchedulerService.listSchedules();
       setSchedules(nextSchedules);
       setSelectedSchedule((current) =>
         nextSchedules.find((schedule) => schedule.id === current?.id)
@@ -149,7 +149,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
   const loadRuns = React.useCallback(
     async (schedule: ILocalSchedule): Promise<void> => {
       try {
-        setRuns(await LocalScheduleService.listRuns(schedule.id));
+        setRuns(await JobSchedulerService.listRuns(schedule.id));
         setLogs([]);
         setResults([]);
         setSelectedRun(undefined);
@@ -165,12 +165,12 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
     const handleChange = (): void => {
       void loadSchedules();
       if (showDirectRuns) {
-        void LocalScheduleService.listDirectRuns().then(setRuns);
+        void JobSchedulerService.listDirectRuns().then(setRuns);
       }
     };
-    window.addEventListener(LOCAL_SCHEDULES_CHANGED_EVENT, handleChange);
+    window.addEventListener(JOB_SCHEDULER_CHANGED_EVENT, handleChange);
     return () => {
-      window.removeEventListener(LOCAL_SCHEDULES_CHANGED_EVENT, handleChange);
+      window.removeEventListener(JOB_SCHEDULER_CHANGED_EVENT, handleChange);
     };
   }, [loadSchedules, showDirectRuns]);
 
@@ -184,7 +184,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
     try {
       setShowDirectRuns(true);
       setSelectedSchedule(undefined);
-      setRuns(await LocalScheduleService.listDirectRuns());
+      setRuns(await JobSchedulerService.listDirectRuns());
       setLogs([]);
       setResults([]);
       setSelectedRun(undefined);
@@ -198,9 +198,9 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     const result = await showDialog({
-      title: 'Edit Local Schedule',
+      title: 'Edit Job',
       body: formDialogWidget(
-        <LocalScheduleDialog
+        <JobSchedulerDialog
           displayName={selectedSchedule.display_name}
           cronExpression={selectedSchedule.cron_expression}
           enabled={selectedSchedule.enabled}
@@ -213,16 +213,16 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     try {
-      const updated = await LocalScheduleService.updateSchedule(
+      const updated = await JobSchedulerService.updateSchedule(
         selectedSchedule.id,
         {
           ...result.value,
           retry_policy: retryPolicyFromDialog(
-            result.value as unknown as ILocalScheduleDialogValue
+            result.value as unknown as IJobSchedulerDialogValue
           )
         }
       );
-      window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
+      window.dispatchEvent(new Event(JOB_SCHEDULER_CHANGED_EVENT));
       if (updated) {
         setSelectedSchedule(updated);
         await loadRuns(updated);
@@ -237,11 +237,11 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     try {
-      const updated = await LocalScheduleService.updateSchedule(
+      const updated = await JobSchedulerService.updateSchedule(
         selectedSchedule.id,
         { enabled: !selectedSchedule.enabled }
       );
-      window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
+      window.dispatchEvent(new Event(JOB_SCHEDULER_CHANGED_EVENT));
       if (updated) {
         setSelectedSchedule(updated);
       }
@@ -255,7 +255,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     const result = await showDialog({
-      title: 'Delete Local Schedule',
+      title: 'Delete Job',
       body: `Delete '${selectedSchedule.display_name}'?`,
       buttons: [Dialog.cancelButton(), Dialog.warnButton({ label: 'Delete' })]
     });
@@ -263,13 +263,13 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     try {
-      await LocalScheduleService.deleteSchedule(selectedSchedule.id);
+      await JobSchedulerService.deleteSchedule(selectedSchedule.id);
       setSelectedSchedule(undefined);
       setRuns([]);
       setLogs([]);
       setResults([]);
       setSelectedRun(undefined);
-      window.dispatchEvent(new Event(LOCAL_SCHEDULES_CHANGED_EVENT));
+      window.dispatchEvent(new Event(JOB_SCHEDULER_CHANGED_EVENT));
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);
     }
@@ -278,8 +278,8 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
   const loadLogs = async (run: ILocalScheduledRun): Promise<void> => {
     try {
       const [nextLogs, nextResults] = await Promise.all([
-        LocalScheduleService.getLogs(run.id),
-        LocalScheduleService.getResults(run.id)
+        JobSchedulerService.getLogs(run.id),
+        JobSchedulerService.getResults(run.id)
       ]);
       setLogs(nextLogs);
       setResults(nextResults);
@@ -294,7 +294,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     try {
-      await LocalScheduleService.runNow(selectedSchedule.id);
+      await JobSchedulerService.runNow(selectedSchedule.id);
       await loadRuns(selectedSchedule);
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);
@@ -306,7 +306,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     try {
-      await LocalScheduleService.retryRun(selectedRun.id);
+      await JobSchedulerService.retryRun(selectedRun.id);
       await loadRuns(selectedSchedule);
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);
@@ -318,7 +318,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     try {
-      await LocalScheduleService.stopRun(selectedRun.id);
+      await JobSchedulerService.stopRun(selectedRun.id);
       await loadRuns(selectedSchedule);
     } catch (error) {
       await RequestErrors.serverError(error as IErrorResponse);
@@ -330,7 +330,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
       return;
     }
     try {
-      await LocalScheduleService.deleteRun(selectedRun.id);
+      await JobSchedulerService.deleteRun(selectedRun.id);
       if (selectedSchedule) {
         await loadRuns(selectedSchedule);
       } else if (showDirectRuns) {
@@ -346,33 +346,33 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
   );
 
   return (
-    <div className="jupyter-ml-localSchedules">
-      <div className="jupyter-ml-localSchedules-header">
+    <div className="jupyter-ml-jobScheduler">
+      <div className="jupyter-ml-jobScheduler-header">
         {onCreate ? (
           <button className="jp-mod-styled" type="button" onClick={() => void onCreate()}>
-            Create Local Schedule
+            Create Job
           </button>
         ) : null}
         <button className="jp-mod-styled" type="button" onClick={() => void loadSchedules()}>
           Refresh
         </button>
       </div>
-      {loading ? <p className="jupyter-ml-localSchedules-empty">Loading local schedules...</p> : null}
+      {loading ? <p className="jupyter-ml-jobScheduler-empty">Loading jobs...</p> : null}
       {!loading && schedules.length === 0 ? (
-        <p className="jupyter-ml-localSchedules-empty">
-          No local schedules. Create one from the Pipeline Editor toolbar or
+        <p className="jupyter-ml-jobScheduler-empty">
+          No jobs. Create one from the Pipeline Editor toolbar or
           from here using an open Local pipeline.
         </p>
       ) : null}
-      <ul className="jupyter-ml-localSchedules-list">
+      <ul className="jupyter-ml-jobScheduler-list">
         <li>
           <button
             type="button"
             className={showDirectRuns ? 'is-selected' : ''}
             onClick={() => void selectDirectRuns()}
           >
-            <span className="jupyter-ml-localSchedules-itemTitle">Direct Runs</span>
-            <span className="jupyter-ml-localSchedules-itemMeta">Run Pipeline history</span>
+            <span className="jupyter-ml-jobScheduler-itemTitle">Direct Runs</span>
+            <span className="jupyter-ml-jobScheduler-itemMeta">Run Pipeline history</span>
           </button>
         </li>
         {schedules.map((schedule) => (
@@ -384,22 +384,22 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
               }
               onClick={() => void selectSchedule(schedule)}
             >
-              <span className="jupyter-ml-localSchedules-itemTitle">{schedule.display_name}</span>
-              <span className="jupyter-ml-localSchedules-itemMeta">{schedule.cron_expression}</span>
-              <span className="jupyter-ml-localSchedules-itemRow">
+              <span className="jupyter-ml-jobScheduler-itemTitle">{schedule.display_name}</span>
+              <span className="jupyter-ml-jobScheduler-itemMeta">{schedule.cron_expression}</span>
+              <span className="jupyter-ml-jobScheduler-itemRow">
                 <span className={`jupyter-ml-status is-${schedule.enabled ? 'enabled' : 'disabled'}`}>
                   {schedule.enabled ? 'Enabled' : 'Disabled'}
                 </span>
-                <span className="jupyter-ml-localSchedules-itemMeta">Next: {formatLocalScheduleTime(schedule.next_run_at)}</span>
+                <span className="jupyter-ml-jobScheduler-itemMeta">Next: {formatJobTime(schedule.next_run_at)}</span>
               </span>
             </button>
           </li>
         ))}
       </ul>
       {selectedSchedule || showDirectRuns ? (
-        <section className="jupyter-ml-localSchedules-detail">
+        <section className="jupyter-ml-jobScheduler-detail">
           {selectedSchedule ? (
-            <div className="jupyter-ml-localSchedules-actions">
+            <div className="jupyter-ml-jobScheduler-actions">
               <button className="jp-mod-styled" type="button" onClick={() => void editSchedule()}>
                 Edit
               </button>
@@ -414,7 +414,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
               </button>
             </div>
           ) : null}
-          <div className="jupyter-ml-localSchedules-runHeader">
+          <div className="jupyter-ml-jobScheduler-runHeader">
             <h3>Run History</h3>
             <label>
               Status
@@ -429,19 +429,19 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
               </select>
             </label>
           </div>
-          {visibleRuns.length === 0 ? <p className="jupyter-ml-localSchedules-empty">No runs recorded.</p> : null}
-          <ul className="jupyter-ml-localSchedules-runs">
+          {visibleRuns.length === 0 ? <p className="jupyter-ml-jobScheduler-empty">No runs recorded.</p> : null}
+          <ul className="jupyter-ml-jobScheduler-runs">
             {visibleRuns.map((run) => (
               <li key={run.id}>
                 <button type="button" onClick={() => void loadLogs(run)}>
-                  <span className="jupyter-ml-localSchedules-itemRow">
+                  <span className="jupyter-ml-jobScheduler-itemRow">
                     <span className={`jupyter-ml-status is-${run.status}`}>{run.status}</span>
-                    <span className="jupyter-ml-localSchedules-itemMeta">
-                      {run.trigger_type} · attempt {run.attempt_number} · {formatLocalScheduleTime(run.started_at ?? run.scheduled_at)}
+                    <span className="jupyter-ml-jobScheduler-itemMeta">
+                      {run.trigger_type} · attempt {run.attempt_number} · {formatJobTime(run.started_at ?? run.scheduled_at)}
                     </span>
                   </span>
                 </button>
-                {run.error_summary ? <p className="jupyter-ml-localSchedules-error">{run.error_summary}</p> : null}
+                {run.error_summary ? <p className="jupyter-ml-jobScheduler-error">{run.error_summary}</p> : null}
               </li>
             ))}
           </ul>
@@ -449,11 +449,11 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
             <section>
               <h3>Run Logs: {selectedRun.id}</h3>
               {selectedRun.remote_kernel_id ? (
-                <p className="jupyter-ml-localSchedules-hint">Enterprise Gateway kernel: {selectedRun.remote_kernel_id}</p>
+                <p className="jupyter-ml-jobScheduler-hint">Enterprise Gateway kernel: {selectedRun.remote_kernel_id}</p>
               ) : null}
-              {logs.length === 0 ? <p className="jupyter-ml-localSchedules-empty">No log entries.</p> : null}
+              {logs.length === 0 ? <p className="jupyter-ml-jobScheduler-empty">No log entries.</p> : null}
               {logs.length > 0 ? (
-                <pre className="jupyter-ml-localSchedules-logs">
+                <pre className="jupyter-ml-jobScheduler-logs">
                   {logs
                     .map(
                       (entry) =>
@@ -463,7 +463,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
                 </pre>
               ) : null}
               {results.length > 0 ? (
-                <ul className="jupyter-ml-localSchedules-results">
+                <ul className="jupyter-ml-jobScheduler-results">
                   {results.map((result) => (
                     <li key={result.id}>
                       <a href={result.location} target="_blank" rel="noreferrer">
@@ -473,7 +473,7 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
                   ))}
                 </ul>
               ) : null}
-              <div className="jupyter-ml-localSchedules-actions">
+              <div className="jupyter-ml-jobScheduler-actions">
                 {selectedSchedule ? (
                   <button className="jp-mod-styled" type="button" onClick={() => void retryRun()}>
                     Retry
@@ -496,8 +496,8 @@ export const LocalSchedulesPanel: React.FC<ILocalSchedulesPanelProps> = ({
   );
 };
 
-/** Sidebar widget for listing and managing persistent local schedules. */
-export class LocalSchedulesWidget extends ReactWidget {
+/** Sidebar widget for listing and managing persistent jobs. */
+export class JobSchedulerWidget extends ReactWidget {
   private readonly onCreate: (() => Promise<void>) | undefined;
   private readonly onOpenLogs:
     | ((run: ILocalScheduledRun, logs: ILocalRunLogEntry[]) => void)
@@ -510,14 +510,14 @@ export class LocalSchedulesWidget extends ReactWidget {
     super();
     this.onCreate = options?.onCreate;
     this.onOpenLogs = options?.onOpenLogs;
-    this.id = LOCAL_SCHEDULES_WIDGET_ID;
-    this.title.caption = 'Local schedules';
-    this.addClass('jupyter-ml-LocalSchedulesWidget');
+    this.id = JOB_SCHEDULER_WIDGET_ID;
+    this.title.caption = 'Jobs';
+    this.addClass('jupyter-ml-JobSchedulerWidget');
   }
 
   render(): JSX.Element {
     return (
-      <LocalSchedulesPanel
+      <JobSchedulerPanel
         onCreate={this.onCreate}
         onOpenLogs={this.onOpenLogs}
       />

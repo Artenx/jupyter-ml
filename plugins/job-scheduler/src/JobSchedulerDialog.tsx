@@ -16,14 +16,14 @@
 
 import * as React from 'react';
 
-export interface ILocalScheduleDialogValue {
+export interface IJobSchedulerDialogValue {
   retry_max_attempts: string | number;
   retry_initial_delay_seconds: string | number;
   retry_backoff_multiplier: string | number;
 }
 
 export const retryPolicyFromDialog = (
-  value: ILocalScheduleDialogValue
+  value: IJobSchedulerDialogValue
 ): {
   max_attempts: number;
   initial_delay_seconds: number;
@@ -34,7 +34,7 @@ export const retryPolicyFromDialog = (
   backoff_multiplier: Number(value.retry_backoff_multiplier)
 });
 
-interface ILocalScheduleDialogProps {
+interface IJobSchedulerDialogProps {
   displayName: string;
   cronExpression?: string;
   enabled?: boolean;
@@ -46,7 +46,7 @@ interface ILocalScheduleDialogProps {
 }
 
 /** Shared form body for creating and editing a local pipeline schedule. */
-export const LocalScheduleDialog: React.FC<ILocalScheduleDialogProps> = ({
+export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
   displayName,
   cronExpression = '0 * * * *',
   enabled = true,
@@ -58,10 +58,10 @@ export const LocalScheduleDialog: React.FC<ILocalScheduleDialogProps> = ({
 }) => {
   return (
     <form className="jupyter-ml-dialog-form">
-      <label htmlFor="local_schedule_name">Schedule name:</label>
+      <label htmlFor="job_name">Schedule name:</label>
       <br />
       <input
-        id="local_schedule_name"
+        id="job_name"
         name="display_name"
         type="text"
         defaultValue={displayName}
@@ -69,34 +69,34 @@ export const LocalScheduleDialog: React.FC<ILocalScheduleDialogProps> = ({
       />
       <br />
       <br />
-      <label htmlFor="local_schedule_cron">Cron expression:</label>
+      <label htmlFor="job_cron">Cron expression:</label>
       <br />
       <input
-        id="local_schedule_cron"
+        id="job_cron"
         name="cron_expression"
         type="text"
         defaultValue={cronExpression}
         data-form-required
       />
-      <p className="jupyter-ml-localSchedule-hint">
+      <p className="jupyter-ml-jobScheduler-hint">
         Five fields: minute hour day-of-month month day-of-week
       </p>
       <input
-        id="local_schedule_enabled"
+        id="job_enabled"
         name="enabled"
         type="checkbox"
         className="jupyter-ml-Dialog-checkbox"
         defaultChecked={enabled}
       />
-      <label htmlFor="local_schedule_enabled">Enabled</label>
-      <fieldset className="jupyter-ml-localSchedule-retry">
+      <label htmlFor="job_enabled">Enabled</label>
+      <fieldset className="jupyter-ml-jobScheduler-retry">
         <legend>Retry policy</legend>
-        <label htmlFor="local_schedule_retry_attempts">Maximum attempts:</label>
-        <input id="local_schedule_retry_attempts" name="retry_max_attempts" type="number" min="1" defaultValue={retryPolicy.max_attempts} />
-        <label htmlFor="local_schedule_retry_delay">Initial delay (seconds):</label>
-        <input id="local_schedule_retry_delay" name="retry_initial_delay_seconds" type="number" min="0" defaultValue={retryPolicy.initial_delay_seconds} />
-        <label htmlFor="local_schedule_retry_backoff">Backoff multiplier:</label>
-        <input id="local_schedule_retry_backoff" name="retry_backoff_multiplier" type="number" min="1" step="0.1" defaultValue={retryPolicy.backoff_multiplier} />
+        <label htmlFor="job_retry_attempts">Maximum attempts:</label>
+        <input id="job_retry_attempts" name="retry_max_attempts" type="number" min="1" defaultValue={retryPolicy.max_attempts} />
+        <label htmlFor="job_retry_delay">Initial delay (seconds):</label>
+        <input id="job_retry_delay" name="retry_initial_delay_seconds" type="number" min="0" defaultValue={retryPolicy.initial_delay_seconds} />
+        <label htmlFor="job_retry_backoff">Backoff multiplier:</label>
+        <input id="job_retry_backoff" name="retry_backoff_multiplier" type="number" min="1" step="0.1" defaultValue={retryPolicy.backoff_multiplier} />
       </fieldset>
     </form>
   );

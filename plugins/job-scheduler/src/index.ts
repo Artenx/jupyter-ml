@@ -24,20 +24,20 @@ import { DocumentWidget } from '@jupyterlab/docregistry';
 
 import { pipelineIcon } from './icons';
 import {
-  LocalRunLogWidget,
-  LocalSchedulesWidget,
-  LOCAL_SCHEDULES_WIDGET_ID,
-  promptCreateLocalSchedule
-} from './LocalSchedulesWidget';
+  JobRunLogWidget,
+  JobSchedulerWidget,
+  JOB_SCHEDULER_WIDGET_ID,
+  promptCreateJob
+} from './JobSchedulerWidget';
 import { GenericObjectType } from './types';
 
 import '../style/index.css';
 
-const PLUGIN_ID = '@jupyter-ml/local-scheduling:plugin';
-const COMMAND_CREATE_LOCAL_SCHEDULE = 'jupyter-ml:create-local-schedule';
+const PLUGIN_ID = '@jupyter-ml/job-scheduler:plugin';
+const COMMAND_CREATE_LOCAL_SCHEDULE = 'jupyter-ml:create-job';
 
 /**
- * Initialization data for the local-scheduling extension.
+ * Initialization data for the job-scheduler extension.
  */
 const extension: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
@@ -48,12 +48,12 @@ const extension: JupyterFrontEndPlugin<void> = {
     palette: ICommandPalette,
     restorer: ILayoutRestorer
   ): Promise<void> => {
-    const createLocalScheduleFromActiveEditor = async (): Promise<void> => {
+    const createJobFromActiveEditor = async (): Promise<void> => {
       const widget = app.shell.currentWidget as DocumentWidget | null;
       const path = widget?.context?.path;
       if (!widget || !path || !path.endsWith('.pipeline')) {
         await showDialog({
-          title: 'Create Local Schedule',
+          title: 'Create Job',
           body: 'Open a pipeline in the Pipeline Editor first, then create a local schedule from here.',
           buttons: [Dialog.okButton()]
         });
@@ -67,7 +67,7 @@ const extension: JupyterFrontEndPlugin<void> = {
         ?.runtime_type;
       if (!Array.isArray(nodes) || nodes.length === 0) {
         await showDialog({
-          title: 'Create Local Schedule',
+          title: 'Create Job',
           body: 'The active pipeline has no nodes. Add nodes before scheduling it.',
           buttons: [Dialog.okButton()]
         });
@@ -75,22 +75,22 @@ const extension: JupyterFrontEndPlugin<void> = {
       }
       if (runtimeType && runtimeType !== 'LOCAL') {
         await showDialog({
-          title: 'Create Local Schedule',
+          title: 'Create Job',
           body: 'Only Local pipelines can be scheduled locally. Open a Local pipeline and try again.',
           buttons: [Dialog.okButton()]
         });
         return;
       }
-      await promptCreateLocalSchedule({
+      await promptCreateJob({
         pipelineJson,
         pipelinePath: widget.context.path
       });
     };
 
     app.commands.addCommand(COMMAND_CREATE_LOCAL_SCHEDULE, {
-      label: 'Create Local Schedule',
+      label: 'Create Job',
       caption: 'Create a schedule for the active Local pipeline',
-      execute: createLocalScheduleFromActiveEditor
+      execute: createJobFromActiveEditor
     });
 
     palette.addItem({
@@ -98,15 +98,15 @@ const extension: JupyterFrontEndPlugin<void> = {
       category: 'Jupyter ML'
     });
 
-    const localRunLogWidgets = new Map<string, LocalRunLogWidget>();
-    const localSchedulesWidget = new LocalSchedulesWidget({
-      onCreate: createLocalScheduleFromActiveEditor,
+    const jobRunLogWidgets = new Map<string, JobRunLogWidget>();
+    const jobSchedulerWidget = new JobSchedulerWidget({
+      onCreate: createJobFromActiveEditor,
       onOpenLogs: (run, logs): void => {
-        let logWidget = localRunLogWidgets.get(run.id);
+        let logWidget = jobRunLogWidgets.get(run.id);
         if (!logWidget) {
-          logWidget = new LocalRunLogWidget(run, logs);
-          localRunLogWidgets.set(run.id, logWidget);
-          logWidget.disposed.connect(() => localRunLogWidgets.delete(run.id));
+          logWidget = new JobRunLogWidget(run, logs);
+          jobRunLogWidgets.set(run.id, logWidget);
+          logWidget.disposed.connect(() => jobRunLogWidgets.delete(run.id));
           app.shell.add(logWidget, 'main', { mode: 'tab-after' });
         } else {
           logWidget.setLogs(logs);
@@ -114,9 +114,9 @@ const extension: JupyterFrontEndPlugin<void> = {
         logWidget.activate();
       }
     });
-    localSchedulesWidget.title.icon = pipelineIcon;
-    restorer.add(localSchedulesWidget, LOCAL_SCHEDULES_WIDGET_ID);
-    app.shell.add(localSchedulesWidget, 'left', { rank: 949 });
+    jobSchedulerWidget.title.icon = pipelineIcon;
+    restorer.add(jobSchedulerWidget, JOB_SCHEDULER_WIDGET_ID);
+    app.shell.add(jobSchedulerWidget, 'left', { rank: 949 });
   }
 };
 

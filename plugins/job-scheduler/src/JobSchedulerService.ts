@@ -101,10 +101,10 @@ interface ILocalRunResultsResponse {
 const SCHEDULES_PATH = 'jupyter-ml/local/schedules';
 const RUNS_PATH = 'jupyter-ml/local/runs';
 
-export const LOCAL_SCHEDULES_CHANGED_EVENT = 'jupyter-ml-local-schedules-changed';
+export const JOB_SCHEDULER_CHANGED_EVENT = 'jupyter-ml-job-scheduler-changed';
 
 /** Client for the authenticated local scheduling REST endpoints. */
-export class LocalScheduleService {
+export class JobSchedulerService {
   static async listSchedules(): Promise<ILocalSchedule[]> {
     const response =
       await RequestHandler.makeGetRequest<ILocalSchedulesResponse>(

@@ -27,10 +27,10 @@ from typing import Optional
 
 import jupyter_core.paths
 
-from jupyter_ml_scheduling.file_lock import JsonStoreLock
-from jupyter_ml_scheduling.models import LocalScheduledRun
-from jupyter_ml_scheduling.models import RunLogEntry
-from jupyter_ml_scheduling.models import RunResult
+from jupyter_ml_job_scheduler.file_lock import JsonStoreLock
+from jupyter_ml_job_scheduler.models import LocalScheduledRun
+from jupyter_ml_job_scheduler.models import RunLogEntry
+from jupyter_ml_job_scheduler.models import RunResult
 
 
 class RunStore:

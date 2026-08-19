@@ -104,7 +104,7 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
 
     @property
     def supported_properties(self) -> Set[str]:
-        """Elyra-owned properties supported by the local scheduling runtime."""
+        """Elyra-owned properties supported by the job scheduler runtime."""
         return {pipeline_constants.ENV_VARIABLES}
 
     def __init__(self, **kwargs):

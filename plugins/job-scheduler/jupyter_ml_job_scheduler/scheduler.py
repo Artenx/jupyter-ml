@@ -27,16 +27,16 @@ from uuid import uuid4
 
 from elyra.pipeline.parser import PipelineParser
 
-from jupyter_ml_scheduling.models import CronExpression
-from jupyter_ml_scheduling.models import LocalSchedule
-from jupyter_ml_scheduling.models import LocalScheduledRun
-from jupyter_ml_scheduling.models import RetryPolicy
-from jupyter_ml_scheduling.models import RunLogEntry
-from jupyter_ml_scheduling.models import RunResult
-from jupyter_ml_scheduling.processor import LocalPipelineProcessor
-from jupyter_ml_scheduling.processor import LocalPipelineStoppedError
-from jupyter_ml_scheduling.run_store import RunStore
-from jupyter_ml_scheduling.schedule_store import ScheduleStore
+from jupyter_ml_job_scheduler.models import CronExpression
+from jupyter_ml_job_scheduler.models import LocalSchedule
+from jupyter_ml_job_scheduler.models import LocalScheduledRun
+from jupyter_ml_job_scheduler.models import RetryPolicy
+from jupyter_ml_job_scheduler.models import RunLogEntry
+from jupyter_ml_job_scheduler.models import RunResult
+from jupyter_ml_job_scheduler.processor import LocalPipelineProcessor
+from jupyter_ml_job_scheduler.processor import LocalPipelineStoppedError
+from jupyter_ml_job_scheduler.run_store import RunStore
+from jupyter_ml_job_scheduler.schedule_store import ScheduleStore
 
 RunObserver = Callable[[str, str, Optional[str]], None]
 ScheduleExecutor = Callable[[LocalSchedule, RunObserver], None]
@@ -63,7 +63,7 @@ class LocalPipelineScheduler:
         self._lock = threading.Lock()
         self._stopped = threading.Event()
         self._thread: Optional[threading.Thread] = None
-        self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="jupyter-ml-local-pipeline")
+        self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="jupyter-ml-job-scheduler")
 
     def start(self) -> None:
         """Recover persisted schedules and start the scheduler loop."""
@@ -71,7 +71,7 @@ class LocalPipelineScheduler:
             return
         self._stopped.clear()
         self.recover(datetime.now())
-        self._thread = threading.Thread(target=self._run, name="jupyter-ml-local-scheduler", daemon=True)
+        self._thread = threading.Thread(target=self._run, name="jupyter-ml-job-scheduler-loop", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:

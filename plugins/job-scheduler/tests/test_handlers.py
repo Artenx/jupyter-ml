@@ -25,20 +25,20 @@ from tornado.web import Application
 from elyra.pipeline.validation import PipelineValidationManager
 from elyra.pipeline.validation import ValidationResponse
 
-from jupyter_ml_scheduling.handlers import LocalDirectRunsHandler
-from jupyter_ml_scheduling.handlers import LocalRunHandler
-from jupyter_ml_scheduling.handlers import LocalRunLogsHandler
-from jupyter_ml_scheduling.handlers import LocalRunResultsHandler
-from jupyter_ml_scheduling.handlers import LocalRunRetryHandler
-from jupyter_ml_scheduling.handlers import LocalRunStopHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleCollectionHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleRunHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleRunsHandler
-from jupyter_ml_scheduling.models import LocalScheduledRun
-from jupyter_ml_scheduling.models import RunLogEntry
-from jupyter_ml_scheduling.models import RunResult
-from jupyter_ml_scheduling.scheduler import LocalPipelineScheduler
+from jupyter_ml_job_scheduler.handlers import LocalDirectRunsHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunLogsHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunResultsHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunRetryHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunStopHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleCollectionHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleRunHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleRunsHandler
+from jupyter_ml_job_scheduler.models import LocalScheduledRun
+from jupyter_ml_job_scheduler.models import RunLogEntry
+from jupyter_ml_job_scheduler.models import RunResult
+from jupyter_ml_job_scheduler.scheduler import LocalPipelineScheduler
 
 
 async def _valid_pipeline_response(*args, **kwargs):
@@ -160,7 +160,7 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
                 (r"/runs/(?P<run_id>[\w.\-]+)", AuthenticatedLocalRunHandler),
                 (r"/protected/schedules", LocalScheduleCollectionHandler),
             ],
-            jupyter_ml_scheduling_scheduler=self.scheduler,
+            jupyter_ml_job_scheduler_scheduler=self.scheduler,
             cookie_secret="test-cookie-secret",
             xsrf_cookies=False,
         )

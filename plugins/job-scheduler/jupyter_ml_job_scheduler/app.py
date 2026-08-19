@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Jupyter Server extension for local pipeline scheduling."""
+"""Jupyter Server extension for job scheduling."""
 
 import json
 
@@ -21,28 +21,28 @@ from jupyter_server.extension.application import ExtensionApp
 
 from elyra.pipeline.processor import PipelineProcessorManager
 
-from jupyter_ml_scheduling._version import __version__
-from jupyter_ml_scheduling.processor import LocalPipelineProcessor
-from jupyter_ml_scheduling.handlers import LocalDirectRunsHandler
-from jupyter_ml_scheduling.handlers import LocalRunHandler
-from jupyter_ml_scheduling.handlers import LocalRunLogsHandler
-from jupyter_ml_scheduling.handlers import LocalRunResultsHandler
-from jupyter_ml_scheduling.handlers import LocalRunRetryHandler
-from jupyter_ml_scheduling.handlers import LocalRunStopHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleCollectionHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleRunHandler
-from jupyter_ml_scheduling.handlers import LocalScheduleRunsHandler
-from jupyter_ml_scheduling.override import LocalSchedulingSubmitHandler
-from jupyter_ml_scheduling.scheduler import LocalPipelineScheduler
+from jupyter_ml_job_scheduler._version import __version__
+from jupyter_ml_job_scheduler.processor import LocalPipelineProcessor
+from jupyter_ml_job_scheduler.handlers import LocalDirectRunsHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunLogsHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunResultsHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunRetryHandler
+from jupyter_ml_job_scheduler.handlers import LocalRunStopHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleCollectionHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleRunHandler
+from jupyter_ml_job_scheduler.handlers import LocalScheduleRunsHandler
+from jupyter_ml_job_scheduler.override import JobSchedulerSubmitHandler
+from jupyter_ml_job_scheduler.scheduler import LocalPipelineScheduler
 
 
-class LocalSchedulingApp(ExtensionApp):
-    """Extension application that owns the local scheduling scheduler and routes."""
+class JobSchedulerApp(ExtensionApp):
+    """Extension application that owns the job scheduler and routes."""
 
-    name = "jupyter_ml_scheduling"
+    name = "jupyter_ml_job_scheduler"
     version = __version__
-    description = "Jupyter ML Local Pipeline Scheduling"
+    description = "Jupyter ML Job Scheduler"
 
     def initialize_handlers(self):
         schedule_id_regex = r"(?P<schedule_id>[\w\.\-]+)"
@@ -50,7 +50,7 @@ class LocalSchedulingApp(ExtensionApp):
 
         self.handlers.extend([
             # Direct run interception must precede the upstream /elyra/pipeline/schedule route.
-            (r"/elyra/pipeline/schedule", LocalSchedulingSubmitHandler),
+            (r"/elyra/pipeline/schedule", JobSchedulerSubmitHandler),
             (r"/jupyter-ml/local/schedules", LocalScheduleCollectionHandler),
             (r"/jupyter-ml/local/schedules/%s/runs" % schedule_id_regex, LocalScheduleRunsHandler),
             (r"/jupyter-ml/local/schedules/%s/run" % schedule_id_regex, LocalScheduleRunHandler),
@@ -64,7 +64,7 @@ class LocalSchedulingApp(ExtensionApp):
         ])
 
     def initialize_settings(self):
-        self.log.info("Initializing Jupyter ML local scheduling settings.")
+        self.log.info("Initializing Jupyter ML job scheduler settings.")
         # Replace the registry's local processor with ours so the upstream
         # PipelineSchedulerHandler dispatches local runs through the
         # lifecycle-observing processor instead of elyra's stock one.
@@ -78,7 +78,7 @@ class LocalSchedulingApp(ExtensionApp):
         except Exception as e:
             self.log.error(f"Failed to replace local processor: {e}", exc_info=True)
         scheduler = LocalPipelineScheduler(root_dir=self.settings["server_root_dir"])
-        self.settings["jupyter_ml_scheduling_scheduler"] = scheduler
+        self.settings["jupyter_ml_job_scheduler_scheduler"] = scheduler
         scheduler.start()
 
         # Patch elyra's PipelineSchedulerHandler.post so local runtime
@@ -88,7 +88,7 @@ class LocalSchedulingApp(ExtensionApp):
         # intercept local submissions and delegate the rest unchanged.
         self._patch_scheduler_handler()
 
-        self.log.info("Jupyter ML local scheduling initialized.")
+        self.log.info("Jupyter ML job scheduler initialized.")
 
     def _patch_scheduler_handler(self) -> None:
         """Wrap elyra's PipelineSchedulerHandler.post to record local runs."""
@@ -96,7 +96,7 @@ class LocalSchedulingApp(ExtensionApp):
         from elyra.pipeline.parser import PipelineParser
         from elyra.pipeline.validation import PipelineValidationManager
 
-        scheduler = self.settings["jupyter_ml_scheduling_scheduler"]
+        scheduler = self.settings["jupyter_ml_job_scheduler_scheduler"]
         original_post = PipelineSchedulerHandler.post
 
         async def patched_post(self_handler, *args, **kwargs):
@@ -129,6 +129,6 @@ class LocalSchedulingApp(ExtensionApp):
         self.log.info("Patched PipelineSchedulerHandler.post to intercept local runs.")
 
     async def stop_extension(self):
-        scheduler = self.settings.get("jupyter_ml_scheduling_scheduler")
+        scheduler = self.settings.get("jupyter_ml_job_scheduler_scheduler")
         if scheduler is not None:
             scheduler.stop()

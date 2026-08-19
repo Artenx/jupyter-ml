@@ -17,12 +17,12 @@ from datetime import datetime
 from datetime import timedelta
 from threading import Event
 
-from jupyter_ml_scheduling.models import LocalSchedule
-from jupyter_ml_scheduling.models import LocalScheduledRun
-from jupyter_ml_scheduling.models import RetryPolicy
-from jupyter_ml_scheduling.run_store import RunStore
-from jupyter_ml_scheduling.schedule_store import ScheduleStore
-from jupyter_ml_scheduling.scheduler import LocalPipelineScheduler
+from jupyter_ml_job_scheduler.models import LocalSchedule
+from jupyter_ml_job_scheduler.models import LocalScheduledRun
+from jupyter_ml_job_scheduler.models import RetryPolicy
+from jupyter_ml_job_scheduler.run_store import RunStore
+from jupyter_ml_job_scheduler.schedule_store import ScheduleStore
+from jupyter_ml_job_scheduler.scheduler import LocalPipelineScheduler
 
 
 def _schedule(next_run_at: datetime) -> LocalSchedule:

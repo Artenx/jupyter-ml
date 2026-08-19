@@ -3,8 +3,8 @@ build-backend = "hatchling.build"
 requires = ["hatchling>=1.5.0"]
 
 [project]
-name = "jupyter-ml-scheduling"
-description = "Local pipeline scheduling and task management for Elyra/JupyterLab"
+name = "jupyter-ml-job-scheduler"
+description = "Job scheduling and task management for Elyra/JupyterLab"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -20,13 +20,13 @@ dependencies = [
 dynamic = ["version"]
 
 [project.entry-points."jupyter_server.extensions"]
-jupyter_ml_scheduling = "jupyter_ml_scheduling"
+jupyter_ml_job_scheduler = "jupyter_ml_job_scheduler"
 
 [project.entry-points."elyra.pipeline.processors"]
-local = "jupyter_ml_scheduling.processor:LocalPipelineProcessor"
+local = "jupyter_ml_job_scheduler.processor:LocalPipelineProcessor"
 
 [project.entry-points."papermill.engine"]
-JupyterMLEngine = "jupyter_ml_scheduling.engine:JupyterMLEngine"
+JupyterMLEngine = "jupyter_ml_job_scheduler.engine:JupyterMLEngine"
 
 [project.optional-dependencies]
 test = [
@@ -41,14 +41,14 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.hatch.version]
-path = "jupyter_ml_scheduling/_version.py"
+path = "jupyter_ml_job_scheduler/_version.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["jupyter_ml_scheduling"]
+packages = ["jupyter_ml_job_scheduler"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "jupyter_ml_scheduling",
+    "jupyter_ml_job_scheduler",
     "src",
     "style",
     "package.json",

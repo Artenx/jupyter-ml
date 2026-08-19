@@ -23,10 +23,10 @@ from elyra.pipeline.handlers import PipelineSchedulerHandler
 from elyra.pipeline.parser import PipelineParser
 from elyra.pipeline.validation import PipelineValidationManager
 
-from jupyter_ml_scheduling.scheduler import LocalPipelineScheduler
+from jupyter_ml_job_scheduler.scheduler import LocalPipelineScheduler
 
 
-class LocalSchedulingSubmitHandler(PipelineSchedulerHandler):
+class JobSchedulerSubmitHandler(PipelineSchedulerHandler):
     """Record local pipeline submissions and delegate non-local ones upstream.
 
     Upstream ``PipelineSchedulerHandler.post`` executes local pipelines
@@ -38,7 +38,7 @@ class LocalSchedulingSubmitHandler(PipelineSchedulerHandler):
 
     @property
     def scheduler(self) -> LocalPipelineScheduler:
-        return self.settings["jupyter_ml_scheduling_scheduler"]
+        return self.settings["jupyter_ml_job_scheduler_scheduler"]
 
     @property
     def owner_id(self) -> str:

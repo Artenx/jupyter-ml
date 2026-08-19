@@ -1,7 +1,7 @@
 {
-  "name": "@jupyter-ml/local-scheduling",
+  "name": "@jupyter-ml/job-scheduler",
   "version": "0.1.0",
-  "description": "JupyterLab extension for local pipeline scheduling and task management",
+  "description": "JupyterLab extension for job scheduling and task management",
   "keywords": [
     "jupyter",
     "jupyterlab",
@@ -55,6 +55,6 @@
   },
   "jupyterlab": {
     "extension": true,
-    "outputDir": "jupyter_ml_scheduling/labextension"
+    "outputDir": "jupyter_ml_job_scheduler/labextension"
   }
 }

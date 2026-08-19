@@ -1,6 +1,6 @@
-# jupyter-ml-scheduling
+# jupyter-ml-job-scheduler
 
-Local pipeline scheduling and task management for Elyra/JupyterLab.
+Job scheduling and task management for Elyra/JupyterLab.
 
 This package is a zero-fork Jupyter Server extension that restores the local
 pipeline scheduling capabilities of the jupyter-ml distribution on top of the
@@ -14,13 +14,13 @@ upstream `elyra` package. It provides:
 ## Installation
 
 ```bash
-pip install jupyter-ml-scheduling
+pip install jupyter-ml-job-scheduler
 ```
 
 Enable the server extension:
 
 ```bash
-jupyter server extension enable --py jupyter_ml_scheduling
+jupyter server extension enable --py jupyter_ml_job_scheduler
 ```
 
 ## Development

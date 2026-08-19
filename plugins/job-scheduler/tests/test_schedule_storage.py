@@ -18,14 +18,14 @@ from datetime import timedelta
 
 import pytest
 
-from jupyter_ml_scheduling.models import CronExpression
-from jupyter_ml_scheduling.models import LocalSchedule
-from jupyter_ml_scheduling.models import LocalScheduledRun
-from jupyter_ml_scheduling.models import RetryPolicy
-from jupyter_ml_scheduling.models import RunLogEntry
-from jupyter_ml_scheduling.models import RunResult
-from jupyter_ml_scheduling.run_store import RunStore
-from jupyter_ml_scheduling.schedule_store import ScheduleStore
+from jupyter_ml_job_scheduler.models import CronExpression
+from jupyter_ml_job_scheduler.models import LocalSchedule
+from jupyter_ml_job_scheduler.models import LocalScheduledRun
+from jupyter_ml_job_scheduler.models import RetryPolicy
+from jupyter_ml_job_scheduler.models import RunLogEntry
+from jupyter_ml_job_scheduler.models import RunResult
+from jupyter_ml_job_scheduler.run_store import RunStore
+from jupyter_ml_job_scheduler.schedule_store import ScheduleStore
 
 
 def _schedule() -> LocalSchedule:

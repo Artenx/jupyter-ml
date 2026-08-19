@@ -13,16 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Jupyter Server extension entry points for jupyter-ml-scheduling."""
+"""Jupyter Server extension entry points for jupyter-ml-job-scheduler."""
 
 
 def _jupyter_server_extension_points():
-    from jupyter_ml_scheduling.app import LocalSchedulingApp
+    from jupyter_ml_job_scheduler.app import JobSchedulerApp
 
-    return [{"module": "jupyter_ml_scheduling.app", "app": LocalSchedulingApp}]
+    return [{"module": "jupyter_ml_job_scheduler.app", "app": JobSchedulerApp}]
 
 
 def load_jupyter_server_extension(nb_server_app):
-    from jupyter_ml_scheduling.app import LocalSchedulingApp
+    from jupyter_ml_job_scheduler.app import JobSchedulerApp
 
-    LocalSchedulingApp.load_classic_server_extension(nb_server_app)
+    JobSchedulerApp.load_classic_server_extension(nb_server_app)

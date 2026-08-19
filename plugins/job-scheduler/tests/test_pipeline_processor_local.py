@@ -21,7 +21,7 @@ import pytest
 from elyra.pipeline.parser import PipelineParser
 from elyra.pipeline.pipeline import GenericOperation
 
-from jupyter_ml_scheduling.processor import LocalPipelineProcessor
+from jupyter_ml_job_scheduler.processor import LocalPipelineProcessor
 from tests.util import _read_pipeline_resource
 from tests.util import construct_pipeline
 from tests.util import NotebookNode

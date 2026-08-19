@@ -26,11 +26,11 @@ from tornado import web
 
 from elyra.pipeline.validation import PipelineValidationManager
 
-from jupyter_ml_scheduling.models import CronExpression
-from jupyter_ml_scheduling.models import LocalSchedule
-from jupyter_ml_scheduling.models import LocalScheduledRun
-from jupyter_ml_scheduling.models import RetryPolicy
-from jupyter_ml_scheduling.scheduler import LocalPipelineScheduler
+from jupyter_ml_job_scheduler.models import CronExpression
+from jupyter_ml_job_scheduler.models import LocalSchedule
+from jupyter_ml_job_scheduler.models import LocalScheduledRun
+from jupyter_ml_job_scheduler.models import RetryPolicy
+from jupyter_ml_job_scheduler.scheduler import LocalPipelineScheduler
 
 
 class LocalScheduleBaseHandler(APIHandler):
@@ -38,7 +38,7 @@ class LocalScheduleBaseHandler(APIHandler):
 
     @property
     def scheduler(self) -> LocalPipelineScheduler:
-        return self.settings["jupyter_ml_scheduling_scheduler"]
+        return self.settings["jupyter_ml_job_scheduler_scheduler"]
 
     @property
     def owner_id(self) -> str:

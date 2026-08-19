@@ -24,8 +24,8 @@ from typing import Optional
 
 import jupyter_core.paths
 
-from jupyter_ml_scheduling.file_lock import JsonStoreLock
-from jupyter_ml_scheduling.models import LocalSchedule
+from jupyter_ml_job_scheduler.file_lock import JsonStoreLock
+from jupyter_ml_job_scheduler.models import LocalSchedule
 
 
 class ScheduleStore:

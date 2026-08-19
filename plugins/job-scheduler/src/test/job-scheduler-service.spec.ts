@@ -18,19 +18,19 @@ import * as React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 
-import { LocalScheduleService } from '../LocalScheduleService';
+import { JobSchedulerService } from '../JobSchedulerService';
 import { RequestHandler } from '../requestHandler';
 import {
-  formatLocalScheduleTime,
-  LocalRunLogWidget,
-  LocalSchedulesPanel
-} from '../LocalSchedulesWidget';
+  formatJobTime,
+  JobRunLogWidget,
+  JobSchedulerPanel
+} from '../JobSchedulerWidget';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
-describe('@jupyter-ml/local-scheduling', () => {
-  describe('LocalScheduleService', () => {
+describe('@jupyter-ml/job-scheduler', () => {
+  describe('JobSchedulerService', () => {
     afterEach(() => {
       jest.restoreAllMocks();
     });
@@ -40,7 +40,7 @@ describe('@jupyter-ml/local-scheduling', () => {
         .spyOn(RequestHandler, 'makeGetRequest')
         .mockResolvedValue({ schedules: [{ id: 'weekday' }] } as never);
 
-      await expect(LocalScheduleService.listSchedules()).resolves.toEqual([
+      await expect(JobSchedulerService.listSchedules()).resolves.toEqual([
         { id: 'weekday' }
       ]);
       expect(getRequest).toHaveBeenCalledWith('jupyter-ml/local/schedules');
@@ -51,7 +51,7 @@ describe('@jupyter-ml/local-scheduling', () => {
         .spyOn(RequestHandler, 'makeGetRequest')
         .mockResolvedValue({ runs: [{ id: 'direct-run' }] } as never);
 
-      await expect(LocalScheduleService.listDirectRuns()).resolves.toEqual([
+      await expect(JobSchedulerService.listDirectRuns()).resolves.toEqual([
         { id: 'direct-run' }
       ]);
       expect(getRequest).toHaveBeenCalledWith('jupyter-ml/local/runs');
@@ -68,7 +68,7 @@ describe('@jupyter-ml/local-scheduling', () => {
         enabled: true
       };
 
-      await LocalScheduleService.createSchedule(schedule);
+      await JobSchedulerService.createSchedule(schedule);
 
       expect(postRequest).toHaveBeenCalledWith(
         'jupyter-ml/local/schedules',
@@ -87,11 +87,11 @@ describe('@jupyter-ml/local-scheduling', () => {
         .spyOn(RequestHandler, 'makeDeleteRequest')
         .mockResolvedValue(undefined);
 
-      await LocalScheduleService.updateSchedule('daily/schedule', {
+      await JobSchedulerService.updateSchedule('daily/schedule', {
         enabled: false
       });
-      await LocalScheduleService.getLogs('run/one');
-      await LocalScheduleService.deleteSchedule('daily/schedule');
+      await JobSchedulerService.getLogs('run/one');
+      await JobSchedulerService.deleteSchedule('daily/schedule');
 
       expect(putRequest).toHaveBeenCalledWith(
         'jupyter-ml/local/schedules/daily%2Fschedule',
@@ -116,11 +116,11 @@ describe('@jupyter-ml/local-scheduling', () => {
         .spyOn(RequestHandler, 'makeDeleteRequest')
         .mockResolvedValue(undefined);
 
-      await LocalScheduleService.runNow('daily/schedule');
-      await LocalScheduleService.retryRun('run/one');
-      await LocalScheduleService.stopRun('run/one');
-      await LocalScheduleService.getResults('run/one');
-      await LocalScheduleService.deleteRun('run/one');
+      await JobSchedulerService.runNow('daily/schedule');
+      await JobSchedulerService.retryRun('run/one');
+      await JobSchedulerService.stopRun('run/one');
+      await JobSchedulerService.getResults('run/one');
+      await JobSchedulerService.deleteRun('run/one');
 
       expect(postRequest).toHaveBeenNthCalledWith(
         1,
@@ -146,25 +146,25 @@ describe('@jupyter-ml/local-scheduling', () => {
     });
   });
 
-  describe('LocalSchedulesPanel', () => {
+  describe('JobSchedulerPanel', () => {
     it('labels absent next-run timestamps as unscheduled', () => {
-      expect(formatLocalScheduleTime(null)).toBe('Not scheduled');
+      expect(formatJobTime(null)).toBe('Not scheduled');
     });
 
     it('shows a create entry and calls onCreate from the sidebar header', async () => {
-      jest.spyOn(LocalScheduleService, 'listSchedules').mockResolvedValue([]);
+      jest.spyOn(JobSchedulerService, 'listSchedules').mockResolvedValue([]);
       const onCreate = jest.fn(async (): Promise<void> => undefined);
       const container = document.createElement('div');
       const root = createRoot(container);
 
       await act(async () => {
-        root.render(React.createElement(LocalSchedulesPanel, { onCreate }));
+        root.render(React.createElement(JobSchedulerPanel, { onCreate }));
       });
-      expect(container.textContent).toContain('No local schedules.');
+      expect(container.textContent).toContain('No jobs.');
       const createButton = Array.from(
         container.querySelectorAll('button')
       ).find((button) =>
-        button.textContent?.includes('Create Local Schedule')
+        button.textContent?.includes('Create Job')
       );
       expect(createButton).toBeDefined();
 
@@ -196,9 +196,9 @@ describe('@jupyter-ml/local-scheduling', () => {
         }
       };
       jest
-        .spyOn(LocalScheduleService, 'listSchedules')
+        .spyOn(JobSchedulerService, 'listSchedules')
         .mockResolvedValue([schedule]);
-      jest.spyOn(LocalScheduleService, 'listRuns').mockResolvedValue([
+      jest.spyOn(JobSchedulerService, 'listRuns').mockResolvedValue([
         {
           id: 'run-1',
           schedule_id: 'weekday',
@@ -219,7 +219,7 @@ describe('@jupyter-ml/local-scheduling', () => {
       const root = createRoot(container);
 
       await act(async () => {
-        root.render(React.createElement(LocalSchedulesPanel));
+        root.render(React.createElement(JobSchedulerPanel));
       });
       const scheduleButton = Array.from(
         container.querySelectorAll('button')
@@ -240,8 +240,8 @@ describe('@jupyter-ml/local-scheduling', () => {
     });
 
     it('lists direct runs and reveals an Enterprise Gateway run log widget', async () => {
-      jest.spyOn(LocalScheduleService, 'listSchedules').mockResolvedValue([]);
-      jest.spyOn(LocalScheduleService, 'listDirectRuns').mockResolvedValue([
+      jest.spyOn(JobSchedulerService, 'listSchedules').mockResolvedValue([]);
+      jest.spyOn(JobSchedulerService, 'listDirectRuns').mockResolvedValue([
         {
           id: 'direct-run',
           schedule_id: null,
@@ -258,7 +258,7 @@ describe('@jupyter-ml/local-scheduling', () => {
           next_retry_at: null
         }
       ]);
-      jest.spyOn(LocalScheduleService, 'getLogs').mockResolvedValue([
+      jest.spyOn(JobSchedulerService, 'getLogs').mockResolvedValue([
         {
           timestamp: '2026-07-31T09:00:00',
           level: 'INFO',
@@ -266,7 +266,7 @@ describe('@jupyter-ml/local-scheduling', () => {
           operation_name: null
         }
       ]);
-      jest.spyOn(LocalScheduleService, 'getResults').mockResolvedValue([]);
+      jest.spyOn(JobSchedulerService, 'getResults').mockResolvedValue([]);
 
       const onOpenLogs = jest.fn();
       const container = document.createElement('div');
@@ -274,7 +274,7 @@ describe('@jupyter-ml/local-scheduling', () => {
 
       await act(async () => {
         root.render(
-          React.createElement(LocalSchedulesPanel, { onOpenLogs })
+          React.createElement(JobSchedulerPanel, { onOpenLogs })
         );
       });
 
@@ -303,7 +303,7 @@ describe('@jupyter-ml/local-scheduling', () => {
         expect(container.textContent).toContain('gateway-kernel-1');
 
         const run = { id: 'direct-run' } as never;
-        const logWidget = new LocalRunLogWidget(run, [
+        const logWidget = new JobRunLogWidget(run, [
           {
             timestamp: '2026-07-31T09:00:00',
             level: 'INFO',

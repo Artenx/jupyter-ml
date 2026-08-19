@@ -107,7 +107,7 @@ const extension: JupyterFrontEndPlugin<void> = {
           logWidget = new LocalRunLogWidget(run, logs);
           localRunLogWidgets.set(run.id, logWidget);
           logWidget.disposed.connect(() => localRunLogWidgets.delete(run.id));
-          app.shell.add(logWidget, 'main', { mode: 'split-right' });
+          app.shell.add(logWidget, 'main', { mode: 'tab-after' });
         } else {
           logWidget.setLogs(logs);
         }

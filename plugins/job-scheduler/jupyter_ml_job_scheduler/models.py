@@ -138,6 +138,24 @@ class RetryPolicy:
 
 
 @dataclass
+class RetentionPolicy:
+    """Defines history retention behavior for a local pipeline task."""
+
+    max_records: int = 100
+    retention_days: int = 90
+
+    def __post_init__(self) -> None:
+        if self.max_records < 1:
+            raise ValueError("Retention policy max_records must be at least 1.")
+        if self.retention_days < 1:
+            raise ValueError("Retention policy retention_days must be at least 1.")
+
+    @classmethod
+    def from_dict(cls, value: Optional[Dict[str, Any]]) -> "RetentionPolicy":
+        return cls(**value) if value else cls()
+
+
+@dataclass
 class LocalSchedule:
     id: str
     display_name: str
@@ -149,6 +167,7 @@ class LocalSchedule:
     next_run_at: Optional[datetime] = None
     owner_id: str = "default"
     retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
+    retention_policy: RetentionPolicy = field(default_factory=RetentionPolicy)
 
     def __post_init__(self) -> None:
         CronExpression(self.cron_expression)
@@ -175,6 +194,7 @@ class LocalSchedule:
             next_run_at=_datetime_from_string(value.get("next_run_at")),
             owner_id=value.get("owner_id", "default"),
             retry_policy=RetryPolicy.from_dict(value.get("retry_policy")),
+            retention_policy=RetentionPolicy.from_dict(value.get("retention_policy")),
         )
 
 

@@ -193,6 +193,10 @@ describe('@jupyter-ml/job-scheduler', () => {
           max_attempts: 3,
           initial_delay_seconds: 60,
           backoff_multiplier: 2
+        },
+        retention_policy: {
+          max_records: 100,
+          retention_days: 90
         }
       };
       jest

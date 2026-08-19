@@ -186,6 +186,31 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   margin-top: 0;
 }
 
+.jupyter-ml-jobScheduler-runItem {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+}
+
+.jupyter-ml-jobScheduler-runItem button:first-child {
+  flex: 1;
+}
+
+.jupyter-ml-jobScheduler-deleteButton {
+  background: transparent;
+  border: 1px solid var(--jp-border-color2);
+  color: var(--jp-error-color1);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 0 8px;
+}
+
+.jupyter-ml-jobScheduler-deleteButton:hover {
+  background: var(--jp-error-color3);
+}
+
 .jupyter-ml-status {
   border: 1px solid currentColor;
   display: inline-block;

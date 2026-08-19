@@ -20,6 +20,8 @@ export interface IJobSchedulerDialogValue {
   retry_max_attempts: string | number;
   retry_initial_delay_seconds: string | number;
   retry_backoff_multiplier: string | number;
+  retention_max_records: string | number;
+  retention_days: string | number;
 }
 
 export const retryPolicyFromDialog = (
@@ -34,6 +36,16 @@ export const retryPolicyFromDialog = (
   backoff_multiplier: Number(value.retry_backoff_multiplier)
 });
 
+export const retentionPolicyFromDialog = (
+  value: IJobSchedulerDialogValue
+): {
+  max_records: number;
+  retention_days: number;
+} => ({
+  max_records: Number(value.retention_max_records),
+  retention_days: Number(value.retention_days)
+});
+
 interface IJobSchedulerDialogProps {
   displayName: string;
   cronExpression?: string;
@@ -42,6 +54,10 @@ interface IJobSchedulerDialogProps {
     max_attempts: number;
     initial_delay_seconds: number;
     backoff_multiplier: number;
+  };
+  retentionPolicy?: {
+    max_records: number;
+    retention_days: number;
   };
 }
 
@@ -54,6 +70,10 @@ export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
     max_attempts: 3,
     initial_delay_seconds: 60,
     backoff_multiplier: 2
+  },
+  retentionPolicy = {
+    max_records: 100,
+    retention_days: 90
   }
 }) => {
   return (
@@ -97,6 +117,13 @@ export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
         <input id="job_retry_delay" name="retry_initial_delay_seconds" type="number" min="0" defaultValue={retryPolicy.initial_delay_seconds} />
         <label htmlFor="job_retry_backoff">Backoff multiplier:</label>
         <input id="job_retry_backoff" name="retry_backoff_multiplier" type="number" min="1" step="0.1" defaultValue={retryPolicy.backoff_multiplier} />
+      </fieldset>
+      <fieldset className="jupyter-ml-jobScheduler-retry">
+        <legend>History retention</legend>
+        <label htmlFor="job_retention_records">Maximum records:</label>
+        <input id="job_retention_records" name="retention_max_records" type="number" min="1" defaultValue={retentionPolicy.max_records} />
+        <label htmlFor="job_retention_days">Retention days:</label>
+        <input id="job_retention_days" name="retention_days" type="number" min="1" defaultValue={retentionPolicy.retention_days} />
       </fieldset>
     </form>
   );

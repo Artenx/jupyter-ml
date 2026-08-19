@@ -27,12 +27,18 @@ export interface ILocalSchedule {
   updated_at: string;
   next_run_at: string | null;
   retry_policy: ILocalRetryPolicy;
+  retention_policy: ILocalRetentionPolicy;
 }
 
 export interface ILocalRetryPolicy {
   max_attempts: number;
   initial_delay_seconds: number;
   backoff_multiplier: number;
+}
+
+export interface ILocalRetentionPolicy {
+  max_records: number;
+  retention_days: number;
 }
 
 export interface ILocalScheduledRun {
@@ -72,6 +78,7 @@ export interface ILocalSchedulePayload {
   cron_expression: string;
   enabled: boolean;
   retry_policy?: ILocalRetryPolicy;
+  retention_policy?: ILocalRetentionPolicy;
 }
 
 export interface ILocalRunResult {

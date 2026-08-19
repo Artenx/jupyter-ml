@@ -135,6 +135,7 @@ class RunStore:
             return [RunResult.from_dict(value) for value in json.load(file)]
 
     def _prune(self, runs: Iterable[LocalScheduledRun], now: datetime) -> List[LocalScheduledRun]:
+        """Prune runs based on default retention policy (max_records=100, retention_days=90)."""
         cutoff = now - timedelta(days=self.retention_days)
         retained: List[LocalScheduledRun] = []
         for run in sorted(runs, key=lambda current: current.scheduled_at, reverse=True):
@@ -146,6 +147,24 @@ class RunStore:
             else:
                 self._remove_log(run.id)
         return retained
+
+    def prune_for_schedule(
+        self, runs: Iterable[LocalScheduledRun], schedule_id: str, max_records: int, retention_days: int, now: datetime
+    ) -> List[LocalScheduledRun]:
+        """Prune runs for a specific schedule based on its retention policy."""
+        cutoff = now - timedelta(days=retention_days)
+        schedule_runs = [run for run in runs if run.schedule_id == schedule_id]
+        other_runs = [run for run in runs if run.schedule_id != schedule_id]
+        retained: List[LocalScheduledRun] = []
+        for run in sorted(schedule_runs, key=lambda current: current.scheduled_at, reverse=True):
+            keep = run.status in {"queued", "scheduled", "running", "retrying"} or (
+                len(retained) < max_records and run.scheduled_at >= cutoff
+            )
+            if keep:
+                retained.append(run)
+            else:
+                self._remove_log(run.id)
+        return other_runs + retained
 
     def _remove_log(self, run_id: str) -> None:
         log_path = self.logs_dir / f"{run_id}.jsonl"

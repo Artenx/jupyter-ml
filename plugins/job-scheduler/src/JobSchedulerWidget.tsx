@@ -22,6 +22,7 @@ import { formDialogWidget } from './formDialogWidget';
 import {
   IJobSchedulerDialogValue,
   JobSchedulerDialog,
+  retentionPolicyFromDialog,
   retryPolicyFromDialog
 } from './JobSchedulerDialog';
 import {
@@ -108,6 +109,9 @@ export const promptCreateJob = async (options: {
       cron_expression: result.value.cron_expression,
       enabled: result.value.enabled,
       retry_policy: retryPolicyFromDialog(
+        result.value as unknown as IJobSchedulerDialogValue
+      ),
+      retention_policy: retentionPolicyFromDialog(
         result.value as unknown as IJobSchedulerDialogValue
       )
     });
@@ -214,6 +218,7 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
           cronExpression={selectedSchedule.cron_expression}
           enabled={selectedSchedule.enabled}
           retryPolicy={selectedSchedule.retry_policy}
+          retentionPolicy={selectedSchedule.retention_policy}
         />
       ),
       buttons: [Dialog.cancelButton(), Dialog.okButton({ label: 'Save' })]
@@ -227,6 +232,9 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
         {
           ...result.value,
           retry_policy: retryPolicyFromDialog(
+            result.value as unknown as IJobSchedulerDialogValue
+          ),
+          retention_policy: retentionPolicyFromDialog(
             result.value as unknown as IJobSchedulerDialogValue
           )
         }
@@ -350,6 +358,30 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
     }
   };
 
+  const deleteRunById = async (runId: string): Promise<void> => {
+    const result = await showDialog({
+      title: 'Delete Run',
+      body: 'Delete this run record? This action cannot be undone.',
+      buttons: [Dialog.cancelButton(), Dialog.warnButton({ label: 'Delete' })]
+    });
+    if (!result.button.accept) {
+      return;
+    }
+    try {
+      await JobSchedulerService.deleteRun(runId);
+      if (selectedSchedule) {
+        await loadRuns(selectedSchedule);
+      } else if (showDirectRuns) {
+        await selectDirectRuns();
+      }
+      if (selectedRun?.id === runId) {
+        setSelectedRun(undefined);
+      }
+    } catch (error) {
+      await RequestErrors.serverError(error as IErrorResponse);
+    }
+  };
+
   const visibleRuns = runs.filter(
     (run) => statusFilter === 'all' || run.status === statusFilter
   );
@@ -442,14 +474,24 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
           <ul className="jupyter-ml-jobScheduler-runs">
             {visibleRuns.map((run) => (
               <li key={run.id}>
-                <button type="button" onClick={() => void loadLogs(run)}>
-                  <span className="jupyter-ml-jobScheduler-itemRow">
-                    <span className={`jupyter-ml-status is-${run.status}`}>{run.status}</span>
-                    <span className="jupyter-ml-jobScheduler-itemMeta">
-                      {run.trigger_type} · attempt {run.attempt_number} · {formatJobTime(run.started_at ?? run.scheduled_at)}
+                <div className="jupyter-ml-jobScheduler-runItem">
+                  <button type="button" onClick={() => void loadLogs(run)}>
+                    <span className="jupyter-ml-jobScheduler-itemRow">
+                      <span className={`jupyter-ml-status is-${run.status}`}>{run.status}</span>
+                      <span className="jupyter-ml-jobScheduler-itemMeta">
+                        {run.trigger_type} · attempt {run.attempt_number} · {formatJobTime(run.started_at ?? run.scheduled_at)}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    className="jupyter-ml-jobScheduler-deleteButton"
+                    title="Delete this run"
+                    onClick={() => void deleteRunById(run.id)}
+                  >
+                    ×
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

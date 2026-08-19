@@ -328,9 +328,23 @@ class LocalPipelineScheduler:
             if run.status == "failed" and run.attempt_number < schedule.retry_policy.max_attempts:
                 self._queue_retry(run, schedule, run.finished_at)
             self.run_store.save(run)
+            self._prune_runs_for_schedule(schedule)
             self._cancel_events.pop(run.id, None)
             self._futures.pop(run.id, None)
             self._active_run_schedule_ids.pop(run.id, None)
+
+    def _prune_runs_for_schedule(self, schedule: LocalSchedule) -> None:
+        """Prune historical runs for a schedule based on its retention policy."""
+        all_runs = self.run_store.list()
+        pruned_runs = self.run_store.prune_for_schedule(
+            all_runs,
+            schedule.id,
+            schedule.retention_policy.max_records,
+            schedule.retention_policy.retention_days,
+            datetime.now(),
+        )
+        if len(pruned_runs) != len(all_runs):
+            self.run_store._write(pruned_runs)
 
     def _queue_retry(self, run: LocalScheduledRun, schedule: LocalSchedule, now: datetime) -> None:
         delay = schedule.retry_policy.initial_delay_seconds * (

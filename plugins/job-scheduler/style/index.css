@@ -118,6 +118,12 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   overflow: hidden;
 }
 
+.jupyter-ml-jobScheduler-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .jupyter-ml-jobScheduler-list,
 .jupyter-ml-jobScheduler-runs {
   list-style: none;

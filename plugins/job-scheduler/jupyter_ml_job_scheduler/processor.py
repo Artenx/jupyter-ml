@@ -43,6 +43,7 @@ from elyra.pipeline.processor import PipelineProcessor
 from elyra.pipeline.runtime_type import RuntimeProcessorType
 
 RunResultObserver = Callable[[str, str, str, Optional[str]], None]
+OutputObserver = Callable[[str, str, Optional[str]], None]
 
 
 class LocalPipelineStoppedError(RuntimeError):
@@ -58,6 +59,7 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
         elyra_run_name: str,
         remote_kernel_observer: Optional[Callable[[str], None]] = None,
         result_observer: Optional[RunResultObserver] = None,
+        output_observer: Optional[OutputObserver] = None,
     ):
         filepath = self.get_valid_filepath(operation.filename)
         file_dir = os.path.dirname(filepath)
@@ -76,7 +78,8 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
 
         t0 = time.time()
         try:
-            papermill.execute_notebook(filepath, filepath, **additional_kwargs)
+            nb = papermill.execute_notebook(filepath, filepath, **additional_kwargs)
+            self._extract_outputs(nb, output_observer, operation.name)
         except papermill.PapermillExecutionError as pmee:
             self.log.error(
                 f"Error executing {file_name} in cell {pmee.exec_count}: " + f"{str(pmee.ename)} {str(pmee.evalue)}"
@@ -93,6 +96,31 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
 
         if result_observer:
             result_observer(filepath, file_name, "notebook", operation.name)
+
+    def _extract_outputs(self, nb, output_observer: Optional[OutputObserver], operation_name: Optional[str]) -> None:
+        if not output_observer:
+            return
+        for cell in nb.cells:
+            if not hasattr(cell, "outputs"):
+                continue
+            for output in cell.outputs:
+                if output.output_type == "stream" and output.get("name") in ("stdout", "stderr"):
+                    text = output.get("text", "")
+                    if text:
+                        level = "WARN" if output.name == "stderr" else "INFO"
+                        for line in text.rstrip("\n").split("\n"):
+                            if line.strip():
+                                output_observer(level, line, operation_name)
+                elif output.output_type in ("error",):
+                    ename = output.get("ename", "")
+                    evalue = output.get("evalue", "")
+                    traceback_lines = output.get("traceback", [])
+                    if ename or evalue:
+                        output_observer("ERROR", f"{ename}: {evalue}", operation_name)
+                    for tb_line in traceback_lines:
+                        clean_line = "".join(c for c in tb_line if c.isprintable() or c in "\n\r\t")
+                        if clean_line.strip():
+                            output_observer("ERROR", clean_line, operation_name)
 
 
 class LocalPipelineProcessor(BaseLocalPipelineProcessor):
@@ -119,6 +147,7 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
         cancel_event: Optional[threading.Event] = None,
         remote_kernel_observer: Optional[Callable[[str], None]] = None,
         result_observer: Optional[RunResultObserver] = None,
+        output_observer: Optional[OutputObserver] = None,
     ):
         self.log_pipeline_info(pipeline.name, "processing pipeline")
         self._notify(run_observer, "INFO", "Local pipeline processing started.")
@@ -136,7 +165,7 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
                 operation_processor = self._operation_processor_catalog[operation.classifier]
                 if isinstance(operation_processor, NotebookOperationProcessor):
                     operation_processor.process(
-                        operation, elyra_run_name, remote_kernel_observer, result_observer
+                        operation, elyra_run_name, remote_kernel_observer, result_observer, output_observer
                     )
                 else:
                     operation_processor.process(operation, elyra_run_name)

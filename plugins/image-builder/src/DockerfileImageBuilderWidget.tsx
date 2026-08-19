@@ -29,11 +29,13 @@ const isActive = (build?: IImageBuild): boolean =>
 
 export interface IDockerfileImageBuilderWidgetProps {
   onRuntimeImageRegistered?: () => void;
+  onOpenDockerfile?: (path: string) => void;
 }
 
 /** Dockerfile editor and build controls used by the Runtime Images workspace. */
 export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidgetProps> = ({
-  onRuntimeImageRegistered
+  onRuntimeImageRegistered,
+  onOpenDockerfile
 }) => {
   const [dockerfilePath, setDockerfilePath] = React.useState('Dockerfile');
   const [content, setContent] = React.useState('');
@@ -370,22 +372,15 @@ export const DockerfileImageBuilderWidget: React.FC<IDockerfileImageBuilderWidge
           </label>
           <div className="jupyter-ml-imageBuilder-buttonRow">
             <button type="button" onClick={() => void loadDockerfile()}>
-              Open
+              Load
             </button>
             <button type="button" onClick={() => void createDockerfile()}>
               Create
             </button>
-            <button type="button" onClick={() => void saveDockerfile()}>
-              Save
+            <button type="button" onClick={() => onOpenDockerfile?.(dockerfilePath)}>
+              Edit in Main Area
             </button>
           </div>
-          <textarea
-            aria-label="Dockerfile content"
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            rows={14}
-            spellCheck={false}
-          />
         </section>
       </div>
       <section className="jupyter-ml-imageBuilder-card jupyter-ml-imageBuilder-history">

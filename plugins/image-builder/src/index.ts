@@ -22,6 +22,7 @@ import { ICommandPalette, ReactWidget } from '@jupyterlab/apputils';
 import * as React from 'react';
 
 import { DockerfileImageBuilderWidget } from './DockerfileImageBuilderWidget';
+import { dockerIcon } from './icons';
 
 import '../style/index.css';
 
@@ -59,12 +60,12 @@ const extension: JupyterFrontEndPlugin<void> = {
       return imageBuilderWidget;
     };
 
-    // Add sidebar widget
+    // Add sidebar widget with icon only
     const sidebarWidget = ReactWidget.create(
       React.createElement(DockerfileImageBuilderWidget)
     );
     sidebarWidget.id = SIDEBAR_WIDGET_ID;
-    sidebarWidget.title.label = 'Image Builder';
+    sidebarWidget.title.icon = dockerIcon;
     sidebarWidget.title.closable = false;
     app.shell.add(sidebarWidget, 'left', { rank: 950 });
 

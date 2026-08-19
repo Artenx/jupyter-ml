@@ -115,7 +115,6 @@ const extension: JupyterFrontEndPlugin<void> = {
       }
     });
     localSchedulesWidget.title.icon = pipelineIcon;
-    localSchedulesWidget.title.label = 'Local Schedules';
     restorer.add(localSchedulesWidget, LOCAL_SCHEDULES_WIDGET_ID);
     app.shell.add(localSchedulesWidget, 'left', { rank: 949 });
   }

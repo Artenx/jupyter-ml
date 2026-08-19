@@ -24,10 +24,14 @@ from __future__ import annotations
 
 from datetime import datetime
 import os
+from subprocess import PIPE
+from subprocess import run as subprocess_run
+import sys
 import threading
 import time
 from typing import Callable
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Set
 
@@ -39,6 +43,9 @@ from elyra.pipeline.local.local_processor import LocalPipelineProcessor as BaseL
 from elyra.pipeline.local.local_processor import LocalPipelineProcessorResponse
 from elyra.pipeline.local.local_processor import NotebookOperationProcessor as BaseNotebookOperationProcessor
 from elyra.pipeline.local.local_processor import OperationProcessor
+from elyra.pipeline.local.local_processor import PythonScriptOperationProcessor as BasePythonScriptOperationProcessor
+from elyra.pipeline.local.local_processor import RScriptOperationProcessor as BaseRScriptOperationProcessor
+from elyra.pipeline.local.local_processor import ScriptOperationProcessor as BaseScriptOperationProcessor
 from elyra.pipeline.processor import PipelineProcessor
 from elyra.pipeline.runtime_type import RuntimeProcessorType
 
@@ -123,6 +130,92 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
                             output_observer("ERROR", clean_line, operation_name)
 
 
+class PythonScriptOperationProcessor(BasePythonScriptOperationProcessor):
+    """Python script processor that captures stdout/stderr output."""
+
+    def process(
+        self,
+        operation,
+        elyra_run_name: str,
+        output_observer: Optional[OutputObserver] = None,
+        result_observer: Optional[RunResultObserver] = None,
+    ):
+        filepath = self.get_valid_filepath(operation.filename)
+        file_dir = os.path.dirname(filepath)
+        file_name = os.path.basename(filepath)
+
+        self.log.debug(f"Processing Python script: {filepath}")
+
+        argv = self.get_argv(filepath)
+        envs = OperationProcessor._collect_envs(operation, elyra_run_name)
+
+        t0 = time.time()
+        try:
+            result = subprocess_run(argv, cwd=file_dir, env=envs, check=True, stdout=PIPE, stderr=PIPE)
+            if output_observer:
+                self._capture_output(result.stdout.decode("utf-8", errors="replace"), "INFO", output_observer, operation.name)
+                self._capture_output(result.stderr.decode("utf-8", errors="replace"), "WARN", output_observer, operation.name)
+        except Exception as ex:
+            self.log_and_raise(file_name, ex)
+
+        t1 = time.time()
+        duration = t1 - t0
+        self.log.debug(f"Execution of {file_name} took {duration:.3f} secs.")
+
+        if result_observer:
+            result_observer(filepath, file_name, "python_script", operation.name)
+
+    def _capture_output(self, text: str, level: str, output_observer: OutputObserver, operation_name: Optional[str]) -> None:
+        if not text:
+            return
+        for line in text.rstrip("\n").split("\n"):
+            if line.strip():
+                output_observer(level, line, operation_name)
+
+
+class RScriptOperationProcessor(BaseRScriptOperationProcessor):
+    """R script processor that captures stdout/stderr output."""
+
+    def process(
+        self,
+        operation,
+        elyra_run_name: str,
+        output_observer: Optional[OutputObserver] = None,
+        result_observer: Optional[RunResultObserver] = None,
+    ):
+        filepath = self.get_valid_filepath(operation.filename)
+        file_dir = os.path.dirname(filepath)
+        file_name = os.path.basename(filepath)
+
+        self.log.debug(f"Processing R script: {filepath}")
+
+        argv = self.get_argv(filepath)
+        envs = OperationProcessor._collect_envs(operation, elyra_run_name)
+
+        t0 = time.time()
+        try:
+            result = subprocess_run(argv, cwd=file_dir, env=envs, check=True, stdout=PIPE, stderr=PIPE)
+            if output_observer:
+                self._capture_output(result.stdout.decode("utf-8", errors="replace"), "INFO", output_observer, operation.name)
+                self._capture_output(result.stderr.decode("utf-8", errors="replace"), "WARN", output_observer, operation.name)
+        except Exception as ex:
+            self.log_and_raise(file_name, ex)
+
+        t1 = time.time()
+        duration = t1 - t0
+        self.log.debug(f"Execution of {file_name} took {duration:.3f} secs.")
+
+        if result_observer:
+            result_observer(filepath, file_name, "r_script", operation.name)
+
+    def _capture_output(self, text: str, level: str, output_observer: OutputObserver, operation_name: Optional[str]) -> None:
+        if not text:
+            return
+        for line in text.rstrip("\n").split("\n"):
+            if line.strip():
+                output_observer(level, line, operation_name)
+
+
 class LocalPipelineProcessor(BaseLocalPipelineProcessor):
     """Local pipeline processor with lifecycle observation and cancellation."""
 
@@ -138,7 +231,13 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         notebook_op_processor = NotebookOperationProcessor(self.root_dir)
-        self._operation_processor_catalog[notebook_op_processor.operation_name] = notebook_op_processor
+        python_op_processor = PythonScriptOperationProcessor(self.root_dir)
+        r_op_processor = RScriptOperationProcessor(self.root_dir)
+        self._operation_processor_catalog = {
+            notebook_op_processor.operation_name: notebook_op_processor,
+            python_op_processor.operation_name: python_op_processor,
+            r_op_processor.operation_name: r_op_processor,
+        }
 
     def process(
         self,
@@ -166,6 +265,10 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
                 if isinstance(operation_processor, NotebookOperationProcessor):
                     operation_processor.process(
                         operation, elyra_run_name, remote_kernel_observer, result_observer, output_observer
+                    )
+                elif isinstance(operation_processor, (PythonScriptOperationProcessor, RScriptOperationProcessor)):
+                    operation_processor.process(
+                        operation, elyra_run_name, output_observer, result_observer
                     )
                 else:
                     operation_processor.process(operation, elyra_run_name)

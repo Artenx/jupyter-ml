@@ -100,7 +100,14 @@ class JobSchedulerApp(ExtensionApp):
         original_post = PipelineSchedulerHandler.post
 
         async def patched_post(self_handler, *args, **kwargs):
-            pipeline_definition = self_handler.get_json_body()
+            payload = self_handler.get_json_body()
+            # Extract pipeline definition - frontend may send either wrapped or raw format
+            if isinstance(payload, dict) and 'pipelines' in payload and 'doc_type' not in payload:
+                # Wrapped format: {"pipelines": [pipeline_def], "run_name": "..."}
+                pipeline_definition = payload['pipelines'][0]
+            else:
+                # Raw format: {"doc_type": "pipeline", ...}
+                pipeline_definition = payload
             response = await PipelineValidationManager.instance().validate(pipeline=pipeline_definition)
             if not response.has_fatal:
                 pipeline = PipelineParser(

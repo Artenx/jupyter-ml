@@ -154,9 +154,13 @@ class PythonScriptOperationProcessor(BasePythonScriptOperationProcessor):
         t0 = time.time()
         try:
             result = subprocess_run(argv, cwd=file_dir, env=envs, check=True, stdout=PIPE, stderr=PIPE)
+            stdout_text = result.stdout.decode("utf-8", errors="replace")
+            stderr_text = result.stderr.decode("utf-8", errors="replace")
             if output_observer:
-                self._capture_output(result.stdout.decode("utf-8", errors="replace"), "INFO", output_observer, operation.name)
-                self._capture_output(result.stderr.decode("utf-8", errors="replace"), "WARN", output_observer, operation.name)
+                self._capture_output(stdout_text, "INFO", output_observer, operation.name)
+                self._capture_output(stderr_text, "WARN", output_observer, operation.name)
+            else:
+                self.log.warning("PythonScriptProcessor: output_observer is None, output will not be captured")
         except Exception as ex:
             self.log_and_raise(file_name, ex)
 

@@ -79,7 +79,30 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 }
 
 .jupyter-ml-jobScheduler-radio-label input[type='radio'] {
-  width: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid var(--jp-border-color1);
+  border-radius: 50%;
+  cursor: pointer;
+  height: 16px;
+  position: relative;
+  width: 16px;
+}
+
+.jupyter-ml-jobScheduler-radio-label input[type='radio']:checked {
+  border-color: var(--jp-brand-color1);
+}
+
+.jupyter-ml-jobScheduler-radio-label input[type='radio']:checked::after {
+  background: var(--jp-brand-color1);
+  border-radius: 50%;
+  content: '';
+  height: 8px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
 }
 
 .jupyter-ml-jobScheduler {

@@ -43,7 +43,7 @@ class LocalSchedulingApp(ExtensionApp):
         schedule_id_regex = r"(?P<schedule_id>[\w\.\-]+)"
         run_id_regex = r"(?P<run_id>[\w\.\-]+)"
 
-        return [
+        self.handlers.extend([
             # Direct run interception must precede the upstream /elyra/pipeline/schedule route.
             (r"/elyra/pipeline/schedule", LocalSchedulingSubmitHandler),
             (r"/jupyter-ml/local/schedules", LocalScheduleCollectionHandler),
@@ -56,7 +56,7 @@ class LocalSchedulingApp(ExtensionApp):
             (r"/jupyter-ml/local/runs/%s/logs" % run_id_regex, LocalRunLogsHandler),
             (r"/jupyter-ml/local/runs/%s/results" % run_id_regex, LocalRunResultsHandler),
             (r"/jupyter-ml/local/runs/%s" % run_id_regex, LocalRunHandler),
-        ]
+        ])
 
     def initialize_settings(self):
         self.log.debug("Initializing Jupyter ML local scheduling settings.")

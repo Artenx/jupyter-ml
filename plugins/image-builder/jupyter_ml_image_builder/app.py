@@ -44,7 +44,7 @@ class ImageBuilderApp(ExtensionApp):
         build_id_regex = r"(?P<build_id>[\w\.\-]+)"
         credential_id_regex = r"(?P<credential_id>[\w\.\-]+)"
 
-        return [
+        self.handlers.extend([
             (r"/jupyter-ml/images/dockerfiles", DockerfileHandler),
             (r"/jupyter-ml/images/builds", ImageBuildCollectionHandler),
             (r"/jupyter-ml/images/builds/%s/logs" % build_id_regex, ImageBuildLogsHandler),
@@ -54,7 +54,7 @@ class ImageBuilderApp(ExtensionApp):
             (r"/jupyter-ml/images/builds/%s" % build_id_regex, ImageBuildHandler),
             (r"/jupyter-ml/images/credentials", RegistryCredentialCollectionHandler),
             (r"/jupyter-ml/images/credentials/%s" % credential_id_regex, RegistryCredentialHandler),
-        ]
+        ])
 
     def initialize_settings(self):
         self.log.debug("Initializing Jupyter ML image builder settings.")

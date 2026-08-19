@@ -195,6 +195,7 @@ describe('@jupyter-ml/job-scheduler', () => {
           backoff_multiplier: 2
         },
         retention_policy: {
+          retention_mode: 'records' as const,
           max_records: 100,
           retention_days: 90
         }

@@ -149,21 +149,27 @@ class RunStore:
         return retained
 
     def prune_for_schedule(
-        self, runs: Iterable[LocalScheduledRun], schedule_id: str, max_records: int, retention_days: int, now: datetime
+        self, runs: Iterable[LocalScheduledRun], schedule_id: str, retention_mode: str, max_records: int, retention_days: int, now: datetime
     ) -> List[LocalScheduledRun]:
         """Prune runs for a specific schedule based on its retention policy."""
-        cutoff = now - timedelta(days=retention_days)
         schedule_runs = [run for run in runs if run.schedule_id == schedule_id]
         other_runs = [run for run in runs if run.schedule_id != schedule_id]
         retained: List[LocalScheduledRun] = []
-        for run in sorted(schedule_runs, key=lambda current: current.scheduled_at, reverse=True):
-            keep = run.status in {"queued", "scheduled", "running", "retrying"} or (
-                len(retained) < max_records and run.scheduled_at >= cutoff
-            )
-            if keep:
-                retained.append(run)
-            else:
-                self._remove_log(run.id)
+        if retention_mode == "days":
+            cutoff = now - timedelta(days=retention_days)
+            for run in sorted(schedule_runs, key=lambda current: current.scheduled_at, reverse=True):
+                keep = run.status in {"queued", "scheduled", "running", "retrying"} or run.scheduled_at >= cutoff
+                if keep:
+                    retained.append(run)
+                else:
+                    self._remove_log(run.id)
+        else:
+            for run in sorted(schedule_runs, key=lambda current: current.scheduled_at, reverse=True):
+                keep = run.status in {"queued", "scheduled", "running", "retrying"} or len(retained) < max_records
+                if keep:
+                    retained.append(run)
+                else:
+                    self._remove_log(run.id)
         return other_runs + retained
 
     def _remove_log(self, run_id: str) -> None:

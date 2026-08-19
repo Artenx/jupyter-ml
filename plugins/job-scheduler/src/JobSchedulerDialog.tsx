@@ -20,6 +20,7 @@ export interface IJobSchedulerDialogValue {
   retry_max_attempts: string | number;
   retry_initial_delay_seconds: string | number;
   retry_backoff_multiplier: string | number;
+  retention_mode: string;
   retention_max_records: string | number;
   retention_days: string | number;
 }
@@ -39,9 +40,11 @@ export const retryPolicyFromDialog = (
 export const retentionPolicyFromDialog = (
   value: IJobSchedulerDialogValue
 ): {
+  retention_mode: 'records' | 'days';
   max_records: number;
   retention_days: number;
 } => ({
+  retention_mode: value.retention_mode as 'records' | 'days',
   max_records: Number(value.retention_max_records),
   retention_days: Number(value.retention_days)
 });
@@ -56,6 +59,7 @@ interface IJobSchedulerDialogProps {
     backoff_multiplier: number;
   };
   retentionPolicy?: {
+    retention_mode: 'records' | 'days';
     max_records: number;
     retention_days: number;
   };
@@ -72,10 +76,13 @@ export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
     backoff_multiplier: 2
   },
   retentionPolicy = {
+    retention_mode: 'records',
     max_records: 100,
     retention_days: 90
   }
 }) => {
+  const [retentionMode, setRetentionMode] = React.useState(retentionPolicy.retention_mode);
+
   return (
     <form className="jupyter-ml-dialog-form">
       <label htmlFor="job_name">Schedule name:</label>
@@ -120,10 +127,48 @@ export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
       </fieldset>
       <fieldset className="jupyter-ml-jobScheduler-retry">
         <legend>History retention</legend>
-        <label htmlFor="job_retention_records">Maximum records:</label>
-        <input id="job_retention_records" name="retention_max_records" type="number" min="1" defaultValue={retentionPolicy.max_records} />
-        <label htmlFor="job_retention_days">Retention days:</label>
-        <input id="job_retention_days" name="retention_days" type="number" min="1" defaultValue={retentionPolicy.retention_days} />
+        <div className="jupyter-ml-jobScheduler-retention-mode">
+          <label className="jupyter-ml-jobScheduler-radio-label">
+            <input
+              type="radio"
+              name="retention_mode"
+              value="records"
+              defaultChecked={retentionMode === 'records'}
+              onChange={() => setRetentionMode('records')}
+            />
+            Keep last
+          </label>
+          <input
+            id="job_retention_records"
+            name="retention_max_records"
+            type="number"
+            min="1"
+            defaultValue={retentionPolicy.max_records}
+            disabled={retentionMode !== 'records'}
+          />
+          <span>records</span>
+        </div>
+        <div className="jupyter-ml-jobScheduler-retention-mode">
+          <label className="jupyter-ml-jobScheduler-radio-label">
+            <input
+              type="radio"
+              name="retention_mode"
+              value="days"
+              defaultChecked={retentionMode === 'days'}
+              onChange={() => setRetentionMode('days')}
+            />
+            Keep for
+          </label>
+          <input
+            id="job_retention_days"
+            name="retention_days"
+            type="number"
+            min="1"
+            defaultValue={retentionPolicy.retention_days}
+            disabled={retentionMode !== 'days'}
+          />
+          <span>days</span>
+        </div>
       </fieldset>
     </form>
   );

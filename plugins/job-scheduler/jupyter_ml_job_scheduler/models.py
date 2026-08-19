@@ -141,10 +141,13 @@ class RetryPolicy:
 class RetentionPolicy:
     """Defines history retention behavior for a local pipeline task."""
 
+    retention_mode: str = "records"  # "records" or "days"
     max_records: int = 100
     retention_days: int = 90
 
     def __post_init__(self) -> None:
+        if self.retention_mode not in {"records", "days"}:
+            raise ValueError("Retention policy retention_mode must be 'records' or 'days'.")
         if self.max_records < 1:
             raise ValueError("Retention policy max_records must be at least 1.")
         if self.retention_days < 1:

@@ -339,6 +339,7 @@ class LocalPipelineScheduler:
         pruned_runs = self.run_store.prune_for_schedule(
             all_runs,
             schedule.id,
+            schedule.retention_policy.retention_mode,
             schedule.retention_policy.max_records,
             schedule.retention_policy.retention_days,
             datetime.now(),

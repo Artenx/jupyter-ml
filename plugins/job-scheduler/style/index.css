@@ -52,6 +52,27 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   width: 100%;
 }
 
+.jupyter-ml-jobScheduler-retention-mode {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.jupyter-ml-jobScheduler-retention-mode input[type='number'] {
+  width: 80px;
+}
+
+.jupyter-ml-jobScheduler-radio-label {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.jupyter-ml-jobScheduler-radio-label input[type='radio'] {
+  width: auto;
+}
+
 .jupyter-ml-jobScheduler {
   color: var(--jp-ui-font-color1);
   display: flex;

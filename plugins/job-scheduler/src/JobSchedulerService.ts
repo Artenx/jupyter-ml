@@ -37,6 +37,7 @@ export interface ILocalRetryPolicy {
 }
 
 export interface ILocalRetentionPolicy {
+  retention_mode: 'records' | 'days';
   max_records: number;
   retention_days: number;
 }

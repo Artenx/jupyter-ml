@@ -51,7 +51,7 @@ export class JobRunLogWidget extends ReactWidget {
     this.logs = logs;
     this.errorSummary = run.error_summary ?? null;
     this.id = `jupyter-ml-local-run-${run.id}-log`;
-    this.title.label = `Run ${run.id.slice(0, 8)}`;
+    this.title.label = formatJobTime(run.started_at ?? run.scheduled_at);
     this.title.caption = 'Local pipeline run log';
     this.title.closable = true;
     this.addClass('jupyter-ml-JobRunLogWidget');

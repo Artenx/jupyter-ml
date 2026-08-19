@@ -57,7 +57,7 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 8px;
 }
 
@@ -110,11 +110,25 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   max-width: 110px;
 }
 
+.jupyter-ml-jobScheduler-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .jupyter-ml-jobScheduler-list,
 .jupyter-ml-jobScheduler-runs {
   list-style: none;
   margin: 8px 0;
   padding: 0;
+}
+
+.jupyter-ml-jobScheduler-runs {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .jupyter-ml-jobScheduler-list button,

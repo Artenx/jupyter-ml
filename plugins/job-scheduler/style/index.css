@@ -359,6 +359,66 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   white-space: pre-wrap;
 }
 
+.jupyter-ml-jobScheduler-logGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 6px 0;
+}
+
+.jupyter-ml-jobScheduler-logGroup {
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.jupyter-ml-jobScheduler-logGroupHeader {
+  align-items: center;
+  background: var(--jp-layout-color2);
+  border-bottom: 1px solid var(--jp-border-color2);
+  border-left: 3px solid var(--jp-brand-color1);
+  color: var(--jp-ui-font-color1);
+  display: flex;
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 600;
+  justify-content: space-between;
+  padding: 4px 8px;
+}
+
+.jupyter-ml-jobScheduler-logGroupCount {
+  background: var(--jp-layout-color3);
+  border-radius: 8px;
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  font-weight: 400;
+  padding: 0 6px;
+}
+
+.jupyter-ml-jobScheduler-logGroupBody {
+  background: var(--jp-cell-editor-background);
+  max-height: 360px;
+  overflow: auto;
+}
+
+.jupyter-ml-jobScheduler-logLine {
+  color: var(--jp-ui-font-color0);
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+  line-height: 1.55;
+  padding: 0 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jupyter-ml-jobScheduler-logLevel-ERROR {
+  background: var(--jp-rendermime-error-background);
+  color: var(--jp-error-color1);
+}
+
+.jupyter-ml-jobScheduler-logLevel-WARN {
+  color: var(--jp-warn-color1);
+}
+
 .jupyter-ml-jobScheduler-results {
   margin: 8px 0;
   padding-left: 20px;

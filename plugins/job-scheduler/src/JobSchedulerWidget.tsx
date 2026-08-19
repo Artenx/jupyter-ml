@@ -65,20 +65,62 @@ export class JobRunLogWidget extends ReactWidget {
   }
 
   render(): JSX.Element {
-    const content = this.logs
-      .map(
-        (entry) =>
-          `${entry.timestamp} ${entry.level} ${entry.operation_name ?? ''} ${entry.message}`
-      )
-      .join('\n');
+    const groups = this.groupLogsByOperation();
     return (
       <>
         {this.errorSummary ? (
           <p className="jupyter-ml-jobScheduler-error">{this.errorSummary}</p>
         ) : null}
-        <pre className="jupyter-ml-jobScheduler-logs">{content || 'No log entries.'}</pre>
+        <div className="jupyter-ml-jobScheduler-logGroups">
+          {groups.length === 0 ? (
+            <p className="jupyter-ml-jobScheduler-empty">No log entries.</p>
+          ) : (
+            groups.map((group) => (
+              <div
+                key={group.name}
+                className="jupyter-ml-jobScheduler-logGroup"
+              >
+                <div className="jupyter-ml-jobScheduler-logGroupHeader">
+                  {group.name}
+                  <span className="jupyter-ml-jobScheduler-logGroupCount">
+                    {group.entries.length}
+                  </span>
+                </div>
+                <div className="jupyter-ml-jobScheduler-logGroupBody">
+                  {group.entries.map((entry, idx) => (
+                    <div
+                      key={idx}
+                      className={`jupyter-ml-jobScheduler-logLine jupyter-ml-jobScheduler-logLevel-${
+                        entry.level
+                      }`}
+                    >
+                      {`${entry.timestamp} ${entry.level} ${entry.message}`}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </>
     );
+  }
+
+  private groupLogsByOperation(): {
+    name: string;
+    entries: ILocalRunLogEntry[];
+  }[] {
+    const order: string[] = [];
+    const map: Record<string, ILocalRunLogEntry[]> = {};
+    for (const entry of this.logs) {
+      const name = entry.operation_name ?? 'Pipeline';
+      if (!map[name]) {
+        map[name] = [];
+        order.push(name);
+      }
+      map[name].push(entry);
+    }
+    return order.map((name) => ({ name, entries: map[name] }));
   }
 }
 

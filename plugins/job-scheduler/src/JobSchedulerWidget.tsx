@@ -143,6 +143,12 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
   const [selectedRun, setSelectedRun] = React.useState<ILocalScheduledRun>();
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [loading, setLoading] = React.useState(true);
+  const [contextMenu, setContextMenu] = React.useState<{
+    x: number;
+    y: number;
+    type: 'schedule' | 'run';
+    targetId?: string;
+  } | null>(null);
 
   const loadSchedules = React.useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -386,6 +392,51 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
     (run) => statusFilter === 'all' || run.status === statusFilter
   );
 
+  const handleScheduleContextMenu = (
+    event: React.MouseEvent,
+    schedule: ILocalSchedule
+  ): void => {
+    event.preventDefault();
+    setSelectedSchedule(schedule);
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      type: 'schedule',
+      targetId: schedule.id
+    });
+  };
+
+  const handleRunContextMenu = (
+    event: React.MouseEvent,
+    run: ILocalScheduledRun
+  ): void => {
+    event.preventDefault();
+    setSelectedRun(run);
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      type: 'run',
+      targetId: run.id
+    });
+  };
+
+  const closeContextMenu = (): void => {
+    setContextMenu(null);
+  };
+
+  React.useEffect(() => {
+    const handleClick = (): void => {
+      closeContextMenu();
+    };
+    if (contextMenu) {
+      document.addEventListener('click', handleClick);
+      return () => {
+        document.removeEventListener('click', handleClick);
+      };
+    }
+    return undefined;
+  }, [contextMenu]);
+
   return (
     <div className="jupyter-ml-jobScheduler">
       <div className="jupyter-ml-jobScheduler-header">
@@ -428,6 +479,7 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
                 selectedSchedule?.id === schedule.id ? 'is-selected' : ''
               }
               onClick={() => void selectSchedule(schedule)}
+              onContextMenu={(event) => handleScheduleContextMenu(event, schedule)}
             >
               <span className="jupyter-ml-jobScheduler-itemTitle">{schedule.display_name}</span>
               <span className="jupyter-ml-jobScheduler-itemMeta">{schedule.cron_expression}</span>
@@ -443,22 +495,6 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
       </ul>
       {selectedSchedule || showDirectRuns ? (
         <section className="jupyter-ml-jobScheduler-detail">
-          {selectedSchedule ? (
-            <div className="jupyter-ml-jobScheduler-actions">
-              <button className="jp-mod-styled" type="button" onClick={() => void editSchedule()}>
-                Edit
-              </button>
-              <button className="jp-mod-styled" type="button" onClick={() => void runNow()}>
-                Run now
-              </button>
-              <button className="jp-mod-styled" type="button" onClick={() => void toggleSchedule()}>
-                {selectedSchedule.enabled ? 'Disable' : 'Enable'}
-              </button>
-              <button className="jp-mod-styled" type="button" onClick={() => void deleteSchedule()}>
-                Delete
-              </button>
-            </div>
-          ) : null}
           <div className="jupyter-ml-jobScheduler-runHeader">
             <h3>Run History</h3>
             <label>
@@ -479,21 +515,13 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
             {visibleRuns.map((run) => (
               <li key={run.id}>
                 <div className="jupyter-ml-jobScheduler-runItem">
-                  <button type="button" onClick={() => void loadLogs(run)}>
+                  <button type="button" onClick={() => void loadLogs(run)} onContextMenu={(event) => handleRunContextMenu(event, run)}>
                     <span className="jupyter-ml-jobScheduler-itemRow">
                       <span className={`jupyter-ml-status is-${run.status}`}>{run.status}</span>
                       <span className="jupyter-ml-jobScheduler-itemMeta">
                         {run.trigger_type} · attempt {run.attempt_number} · {formatJobTime(run.started_at ?? run.scheduled_at)}
                       </span>
                     </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="jupyter-ml-jobScheduler-deleteButton"
-                    title="Delete this run"
-                    onClick={() => void deleteRunById(run.id)}
-                  >
-                    ×
                   </button>
                 </div>
               </li>
@@ -527,24 +555,49 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
                   ))}
                 </ul>
               ) : null}
-              <div className="jupyter-ml-jobScheduler-actions">
-                {selectedSchedule ? (
-                  <button className="jp-mod-styled" type="button" onClick={() => void retryRun()}>
-                    Retry
-                  </button>
-                ) : null}
-                {selectedRun.status === 'queued' || selectedRun.status === 'running' ? (
-                  <button className="jp-mod-styled" type="button" onClick={() => void stopRun()}>
-                    Stop
-                  </button>
-                ) : null}
-                <button className="jp-mod-styled" type="button" onClick={() => void deleteRun()}>
-                  Delete run
-                </button>
-              </div>
             </section>
           ) : null}
         </section>
+      ) : null}
+      {contextMenu ? (
+        <div
+          className="jupyter-ml-jobScheduler-contextMenu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          {contextMenu.type === 'schedule' && selectedSchedule ? (
+            <>
+              <button type="button" onClick={() => { closeContextMenu(); void editSchedule(); }}>
+                Edit
+              </button>
+              <button type="button" onClick={() => { closeContextMenu(); void runNow(); }}>
+                Run now
+              </button>
+              <button type="button" onClick={() => { closeContextMenu(); void toggleSchedule(); }}>
+                {selectedSchedule.enabled ? 'Disable' : 'Enable'}
+              </button>
+              <button type="button" onClick={() => { closeContextMenu(); void deleteSchedule(); }}>
+                Delete
+              </button>
+            </>
+          ) : null}
+          {contextMenu.type === 'run' && selectedRun ? (
+            <>
+              {selectedSchedule ? (
+                <button type="button" onClick={() => { closeContextMenu(); void retryRun(); }}>
+                  Retry
+                </button>
+              ) : null}
+              {selectedRun.status === 'queued' || selectedRun.status === 'running' ? (
+                <button type="button" onClick={() => { closeContextMenu(); void stopRun(); }}>
+                  Stop
+                </button>
+              ) : null}
+              <button type="button" onClick={() => { closeContextMenu(); void deleteRunById(selectedRun.id); }}>
+                Delete
+              </button>
+            </>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

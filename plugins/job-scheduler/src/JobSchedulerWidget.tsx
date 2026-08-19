@@ -413,6 +413,10 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
         >
           <span className="jupyter-ml-jobScheduler-itemTitle">Direct Runs</span>
           <span className="jupyter-ml-jobScheduler-itemMeta">Run Pipeline history</span>
+          <span className="jupyter-ml-jobScheduler-itemRow">
+            <span className="jupyter-ml-status is-enabled">Active</span>
+            <span className="jupyter-ml-jobScheduler-itemMeta">On-demand runs</span>
+          </span>
         </button>
       </div>
       <ul className="jupyter-ml-jobScheduler-list">

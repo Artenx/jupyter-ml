@@ -172,14 +172,38 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 }
 
 .jupyter-ml-jobScheduler-directRuns {
-  border-bottom: 1px solid var(--jp-border-color2);
   flex-shrink: 0;
-  margin: 8px 0;
-  padding-bottom: 8px;
+  margin: 8px 0 0;
+}
+
+.jupyter-ml-jobScheduler-directRuns button,
+.jupyter-ml-jobScheduler-list button,
+.jupyter-ml-jobScheduler-runs button {
+  background: transparent;
+  border: 1px solid var(--jp-border-color2);
+  color: inherit;
+  cursor: pointer;
+  margin-bottom: 4px;
+  padding: 6px;
+  text-align: left;
+  width: 100%;
 }
 
 .jupyter-ml-jobScheduler-directRuns button {
-  width: 100%;
+  border-left: 3px solid var(--jp-brand-color1);
+}
+
+.jupyter-ml-jobScheduler-directRuns button:hover,
+.jupyter-ml-jobScheduler-list button:hover,
+.jupyter-ml-jobScheduler-runs button:hover {
+  background: var(--jp-layout-color2);
+}
+
+.jupyter-ml-jobScheduler-directRuns button.is-selected,
+.jupyter-ml-jobScheduler-list button.is-selected,
+.jupyter-ml-jobScheduler-runs button.is-selected {
+  background: var(--jp-editor-selected-background);
+  border-color: var(--jp-brand-color1);
 }
 
 .jupyter-ml-jobScheduler-list {

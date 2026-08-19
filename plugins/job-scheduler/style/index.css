@@ -394,3 +394,13 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 .jupyter-ml-jobScheduler-contextMenu button:hover {
   background: var(--jp-layout-color2);
 }
+
+.jupyter-ml-jobScheduler-filePicker {
+  margin: 8px 0;
+  min-width: 400px;
+}
+
+.jupyter-ml-jobScheduler-filePicker select {
+  font-family: var(--jp-code-font-family);
+  font-size: var(--jp-code-font-size);
+}

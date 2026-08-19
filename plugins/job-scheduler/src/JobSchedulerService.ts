@@ -64,6 +64,7 @@ export interface ILocalScheduledRun {
   parent_run_id: string | null;
   remote_kernel_id: string | null;
   next_retry_at: string | null;
+  pipeline_definition?: GenericObjectType;
 }
 
 export interface ILocalRunLogEntry {
@@ -110,6 +111,23 @@ const SCHEDULES_PATH = 'jupyter-ml/local/schedules';
 const RUNS_PATH = 'jupyter-ml/local/runs';
 
 export const JOB_SCHEDULER_CHANGED_EVENT = 'jupyter-ml-job-scheduler-changed';
+
+/** Extract pipeline name from a pipeline definition object. */
+export const getPipelineName = (
+  pipelineDefinition: GenericObjectType | undefined
+): string => {
+  if (!pipelineDefinition) {
+    return '';
+  }
+  const pipelines = pipelineDefinition.pipelines;
+  if (Array.isArray(pipelines) && pipelines.length > 0) {
+    const appData = pipelines[0]?.app_data;
+    if (appData?.properties?.name) {
+      return appData.properties.name;
+    }
+  }
+  return '';
+};
 
 /** Client for the authenticated local scheduling REST endpoints. */
 export class JobSchedulerService {

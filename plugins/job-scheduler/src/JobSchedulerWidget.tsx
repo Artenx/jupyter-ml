@@ -16,6 +16,7 @@
 
 import { Dialog, ReactWidget, showDialog } from '@jupyterlab/apputils';
 import { PathExt } from '@jupyterlab/coreutils';
+import { ContentsManager } from '@jupyterlab/services';
 import * as React from 'react';
 
 import { formDialogWidget } from './formDialogWidget';
@@ -30,7 +31,8 @@ import {
   ILocalScheduledRun,
   ILocalSchedule,
   JobSchedulerService,
-  JOB_SCHEDULER_CHANGED_EVENT
+  JOB_SCHEDULER_CHANGED_EVENT,
+  getPipelineName
 } from './JobSchedulerService';
 import { IErrorResponse, RequestErrors } from './requestErrors';
 import { GenericObjectType } from './types';
@@ -118,6 +120,75 @@ export const promptCreateJob = async (options: {
   } catch (error) {
     await RequestErrors.serverError(error as IErrorResponse);
   }
+};
+
+/** File picker dialog for selecting a .pipeline file from the workspace. */
+const PipelineFilePicker: React.FC<{
+  files: string[];
+  selected: string;
+  onSelect: (path: string) => void;
+}> = ({ files, selected, onSelect }) => {
+  return (
+    <div className="jupyter-ml-jobScheduler-filePicker">
+      {files.length === 0 ? (
+        <p className="jupyter-ml-jobScheduler-empty">
+          No .pipeline files found in the workspace.
+        </p>
+      ) : (
+        <select
+          className="jp-mod-styled"
+          value={selected}
+          onChange={(e) => onSelect(e.target.value)}
+          style={{ width: '100%', minHeight: '120px' }}
+          size={6}
+        >
+          {files.map((file) => (
+            <option key={file} value={file}>
+              {file}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+};
+
+/** Show a file picker dialog to select a .pipeline file. */
+export const promptSelectPipelineFile = async (
+  contentsManager: ContentsManager
+): Promise<string | null> => {
+  let pipelineFiles: string[] = [];
+  try {
+    const model = await contentsManager.get('', { content: true });
+    if (model.type === 'directory' && model.content) {
+      pipelineFiles = model.content
+        .filter((item: any) => item.name.endsWith('.pipeline'))
+        .map((item: any) => item.path);
+    }
+  } catch (error) {
+    console.error('Failed to list pipeline files:', error);
+  }
+
+  let selectedFile = pipelineFiles[0] || '';
+
+  const result = await showDialog({
+    title: 'Select Pipeline File',
+    body: (
+      <PipelineFilePicker
+        files={pipelineFiles}
+        selected={selectedFile}
+        onSelect={(path) => {
+          selectedFile = path;
+        }}
+      />
+    ),
+    buttons: [Dialog.cancelButton(), Dialog.okButton({ label: 'Select' })]
+  });
+
+  if (result.button.accept && selectedFile) {
+    return selectedFile;
+  }
+  return null;
 };
 
 interface IJobSchedulerPanelProps {
@@ -438,8 +509,7 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
       {loading ? <p className="jupyter-ml-jobScheduler-empty">Loading jobs...</p> : null}
       {!loading && schedules.length === 0 ? (
         <p className="jupyter-ml-jobScheduler-empty">
-          No jobs. Create one from the Pipeline Editor toolbar or
-          from here using an open Local pipeline.
+          No jobs. Click Create Job to select a .pipeline file from the workspace.
         </p>
       ) : null}
       <div className="jupyter-ml-jobScheduler-directRuns">
@@ -468,6 +538,11 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
               onContextMenu={(event) => handleScheduleContextMenu(event, schedule)}
             >
               <span className="jupyter-ml-jobScheduler-itemTitle">{schedule.display_name}</span>
+              {getPipelineName(schedule.pipeline_definition) ? (
+                <span className="jupyter-ml-jobScheduler-itemMeta">
+                  Pipeline: {getPipelineName(schedule.pipeline_definition)}
+                </span>
+              ) : null}
               <span className="jupyter-ml-jobScheduler-itemMeta">{schedule.cron_expression}</span>
               <span className="jupyter-ml-jobScheduler-itemRow">
                 <span className={`jupyter-ml-status is-${schedule.enabled ? 'enabled' : 'disabled'}`}>
@@ -508,6 +583,11 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
                         {run.trigger_type} · attempt {run.attempt_number} · {formatJobTime(run.started_at ?? run.scheduled_at)}
                       </span>
                     </span>
+                    {getPipelineName(run.pipeline_definition) ? (
+                      <span className="jupyter-ml-jobScheduler-itemMeta">
+                        Pipeline: {getPipelineName(run.pipeline_definition)}
+                      </span>
+                    ) : null}
                   </button>
                 </div>
               </li>

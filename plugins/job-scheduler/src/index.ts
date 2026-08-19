@@ -21,13 +21,15 @@ import {
 } from '@jupyterlab/application';
 import { Dialog, ICommandPalette, showDialog } from '@jupyterlab/apputils';
 import { DocumentWidget } from '@jupyterlab/docregistry';
+import { ContentsManager } from '@jupyterlab/services';
 
 import { pipelineIcon } from './icons';
 import {
   JobRunLogWidget,
   JobSchedulerWidget,
   JOB_SCHEDULER_WIDGET_ID,
-  promptCreateJob
+  promptCreateJob,
+  promptSelectPipelineFile
 } from './JobSchedulerWidget';
 import { GenericObjectType } from './types';
 
@@ -48,43 +50,88 @@ const extension: JupyterFrontEndPlugin<void> = {
     palette: ICommandPalette,
     restorer: ILayoutRestorer
   ): Promise<void> => {
+    const contentsManager = new ContentsManager();
+
     const createJobFromActiveEditor = async (): Promise<void> => {
       const widget = app.shell.currentWidget as DocumentWidget | null;
       const path = widget?.context?.path;
-      if (!widget || !path || !path.endsWith('.pipeline')) {
-        await showDialog({
-          title: 'Create Job',
-          body: 'Open a pipeline in the Pipeline Editor first, then create a local schedule from here.',
-          buttons: [Dialog.okButton()]
+
+      // If there's an active pipeline editor, use it
+      if (widget && path && path.endsWith('.pipeline')) {
+        const pipelineJson = widget.context.model.toJSON() as GenericObjectType;
+        const primaryPipeline =
+          pipelineJson?.pipelines?.[0] ?? ({} as GenericObjectType);
+        const nodes = primaryPipeline?.nodes as unknown[];
+        const runtimeType = (primaryPipeline?.app_data as GenericObjectType)
+          ?.runtime_type;
+        if (!Array.isArray(nodes) || nodes.length === 0) {
+          await showDialog({
+            title: 'Create Job',
+            body: 'The active pipeline has no nodes. Add nodes before scheduling it.',
+            buttons: [Dialog.okButton()]
+          });
+          return;
+        }
+        if (runtimeType && runtimeType !== 'LOCAL') {
+          await showDialog({
+            title: 'Create Job',
+            body: 'Only Local pipelines can be scheduled locally. Open a Local pipeline and try again.',
+            buttons: [Dialog.okButton()]
+          });
+          return;
+        }
+        await promptCreateJob({
+          pipelineJson,
+          pipelinePath: widget.context.path
         });
         return;
       }
-      const pipelineJson = widget.context.model.toJSON() as GenericObjectType;
-      const primaryPipeline =
-        pipelineJson?.pipelines?.[0] ?? ({} as GenericObjectType);
-      const nodes = primaryPipeline?.nodes as unknown[];
-      const runtimeType = (primaryPipeline?.app_data as GenericObjectType)
-        ?.runtime_type;
-      if (!Array.isArray(nodes) || nodes.length === 0) {
-        await showDialog({
-          title: 'Create Job',
-          body: 'The active pipeline has no nodes. Add nodes before scheduling it.',
-          buttons: [Dialog.okButton()]
-        });
+
+      // Otherwise, show file picker
+      const selectedPath = await promptSelectPipelineFile(contentsManager);
+      if (!selectedPath) {
         return;
       }
-      if (runtimeType && runtimeType !== 'LOCAL') {
+
+      try {
+        const model = await contentsManager.get(selectedPath, {
+          content: true
+        });
+        const pipelineJson = model.content as GenericObjectType;
+        const primaryPipeline =
+          pipelineJson?.pipelines?.[0] ?? ({} as GenericObjectType);
+        const nodes = primaryPipeline?.nodes as unknown[];
+        const runtimeType = (primaryPipeline?.app_data as GenericObjectType)
+          ?.runtime_type;
+
+        if (!Array.isArray(nodes) || nodes.length === 0) {
+          await showDialog({
+            title: 'Create Job',
+            body: 'The selected pipeline has no nodes.',
+            buttons: [Dialog.okButton()]
+          });
+          return;
+        }
+        if (runtimeType && runtimeType !== 'LOCAL') {
+          await showDialog({
+            title: 'Create Job',
+            body: 'Only Local pipelines can be scheduled locally.',
+            buttons: [Dialog.okButton()]
+          });
+          return;
+        }
+        await promptCreateJob({
+          pipelineJson,
+          pipelinePath: selectedPath
+        });
+      } catch (error) {
+        console.error('Failed to load pipeline file:', error);
         await showDialog({
           title: 'Create Job',
-          body: 'Only Local pipelines can be scheduled locally. Open a Local pipeline and try again.',
+          body: `Failed to load pipeline file: ${selectedPath}`,
           buttons: [Dialog.okButton()]
         });
-        return;
       }
-      await promptCreateJob({
-        pipelineJson,
-        pipelinePath: widget.context.path
-      });
     };
 
     app.commands.addCommand(COMMAND_CREATE_LOCAL_SCHEDULE, {

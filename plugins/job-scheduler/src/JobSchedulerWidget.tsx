@@ -44,10 +44,12 @@ export const formatJobTime = (value: string | null): string => {
 /** Main-area log view presented with a file-like title for a selected run. */
 export class JobRunLogWidget extends ReactWidget {
   private logs: ILocalRunLogEntry[];
+  private errorSummary: string | null;
 
   constructor(run: ILocalScheduledRun, logs: ILocalRunLogEntry[]) {
     super();
     this.logs = logs;
+    this.errorSummary = run.error_summary ?? null;
     this.id = `jupyter-ml-local-run-${run.id}-log`;
     this.title.label = `Run ${run.id.slice(0, 8)}`;
     this.title.caption = 'Local pipeline run log';
@@ -67,7 +69,14 @@ export class JobRunLogWidget extends ReactWidget {
           `${entry.timestamp} ${entry.level} ${entry.operation_name ?? ''} ${entry.message}`
       )
       .join('\n');
-    return <pre className="jupyter-ml-jobScheduler-logs">{content || 'No log entries.'}</pre>;
+    return (
+      <>
+        {this.errorSummary ? (
+          <p className="jupyter-ml-jobScheduler-error">{this.errorSummary}</p>
+        ) : null}
+        <pre className="jupyter-ml-jobScheduler-logs">{content || 'No log entries.'}</pre>
+      </>
+    );
   }
 }
 
@@ -441,7 +450,6 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
                     </span>
                   </span>
                 </button>
-                {run.error_summary ? <p className="jupyter-ml-jobScheduler-error">{run.error_summary}</p> : null}
               </li>
             ))}
           </ul>

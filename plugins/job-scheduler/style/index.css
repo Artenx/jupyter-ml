@@ -111,7 +111,7 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  padding: 8px;
+  padding: 10px 10px 6px;
 }
 
 .jupyter-ml-jobScheduler-header,
@@ -122,13 +122,35 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 }
 
 .jupyter-ml-jobScheduler-header {
+  border-bottom: 1px solid var(--jp-border-color2);
+  flex-shrink: 0;
   justify-content: space-between;
+  padding-bottom: 8px;
+}
+
+.jupyter-ml-jobScheduler-header button.jp-mod-accept {
+  background: var(--jp-brand-color1);
+  border: none;
+  border-radius: 4px;
+  color: var(--jp-ui-inverse-font-color0);
+  padding: 5px 12px;
+}
+
+.jupyter-ml-jobScheduler-header button.jp-mod-accept:hover {
+  background: var(--jp-brand-color0);
+}
+
+.jupyter-ml-jobScheduler-header button.jp-mod-styled:not(.jp-mod-accept) {
+  border-radius: 4px;
+  padding: 5px 10px;
 }
 
 .jupyter-ml-jobScheduler-empty {
   color: var(--jp-ui-font-color2);
   font-size: var(--jp-ui-font-size1);
-  margin: 8px 0;
+  margin: 16px 4px;
+  padding: 12px;
+  text-align: center;
 }
 
 .jupyter-ml-jobScheduler-hint {
@@ -143,8 +165,16 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   display: flex;
   gap: 8px;
   justify-content: space-between;
-  margin: 8px 0 6px;
+  margin: 10px 0 6px;
   padding-bottom: 6px;
+}
+
+.jupyter-ml-jobScheduler-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .jupyter-ml-jobScheduler-runHeader h3 {
@@ -179,13 +209,16 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 .jupyter-ml-jobScheduler-directRuns button,
 .jupyter-ml-jobScheduler-list button,
 .jupyter-ml-jobScheduler-runs button {
-  background: transparent;
+  background: var(--jp-layout-color1);
   border: 1px solid var(--jp-border-color2);
+  border-radius: 6px;
   color: inherit;
   cursor: pointer;
-  margin-bottom: 4px;
-  padding: 6px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
   text-align: left;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s,
+    transform 0.05s;
   width: 100%;
 }
 
@@ -197,6 +230,13 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 .jupyter-ml-jobScheduler-list button:hover,
 .jupyter-ml-jobScheduler-runs button:hover {
   background: var(--jp-layout-color2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.jupyter-ml-jobScheduler-directRuns button:active,
+.jupyter-ml-jobScheduler-list button:active,
+.jupyter-ml-jobScheduler-runs button:active {
+  transform: translateY(1px);
 }
 
 .jupyter-ml-jobScheduler-directRuns button.is-selected,
@@ -204,6 +244,7 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 .jupyter-ml-jobScheduler-runs button.is-selected {
   background: var(--jp-editor-selected-background);
   border-color: var(--jp-brand-color1);
+  box-shadow: 0 0 0 1px var(--jp-brand-color1);
 }
 
 .jupyter-ml-jobScheduler-list {
@@ -306,35 +347,62 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 }
 
 .jupyter-ml-status {
-  border: 1px solid currentColor;
+  border-radius: 10px;
   display: inline-block;
   font-size: var(--jp-ui-font-size0);
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   line-height: 1;
-  padding: 3px 5px;
-  text-transform: uppercase;
+  padding: 3px 8px;
+  text-transform: capitalize;
   white-space: nowrap;
 }
 
 .jupyter-ml-status.is-succeeded,
 .jupyter-ml-status.is-enabled {
+  background: var(--jp-success-color3);
   color: var(--jp-success-color1);
 }
 
 .jupyter-ml-status.is-failed,
 .jupyter-ml-status.is-stopped {
+  background: var(--jp-error-color3);
   color: var(--jp-error-color1);
 }
 
 .jupyter-ml-status.is-running,
 .jupyter-ml-status.is-queued,
 .jupyter-ml-status.is-retrying {
+  background: var(--jp-warn-color3);
   color: var(--jp-warn-color1);
 }
 
 .jupyter-ml-status.is-disabled {
+  background: var(--jp-layout-color3);
   color: var(--jp-ui-font-color3);
+}
+
+.jupyter-ml-jobScheduler-list button:has(.jupyter-ml-status.is-enabled) {
+  border-left: 3px solid var(--jp-brand-color1);
+}
+
+.jupyter-ml-jobScheduler-list button:has(.jupyter-ml-status.is-disabled) {
+  border-left: 3px solid var(--jp-ui-font-color3);
+}
+
+.jupyter-ml-jobScheduler-runs button:has(.jupyter-ml-status.is-succeeded) {
+  border-left: 3px solid var(--jp-success-color1);
+}
+
+.jupyter-ml-jobScheduler-runs button:has(.jupyter-ml-status.is-failed),
+.jupyter-ml-jobScheduler-runs button:has(.jupyter-ml-status.is-stopped) {
+  border-left: 3px solid var(--jp-error-color1);
+}
+
+.jupyter-ml-jobScheduler-runs button:has(.jupyter-ml-status.is-running),
+.jupyter-ml-jobScheduler-runs button:has(.jupyter-ml-status.is-queued),
+.jupyter-ml-jobScheduler-runs button:has(.jupyter-ml-status.is-retrying) {
+  border-left: 3px solid var(--jp-warn-color1);
 }
 
 .jupyter-ml-jobScheduler-error {
@@ -457,10 +525,11 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 .jupyter-ml-jobScheduler-contextMenu {
   background: var(--jp-layout-color1);
   border: 1px solid var(--jp-border-color1);
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  min-width: 120px;
-  padding: 4px 0;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  min-width: 140px;
+  overflow: hidden;
+  padding: 4px;
   position: fixed;
   z-index: 10000;
 }
@@ -468,6 +537,7 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 .jupyter-ml-jobScheduler-contextMenu button {
   background: transparent;
   border: none;
+  border-radius: 4px;
   color: var(--jp-ui-font-color0);
   cursor: pointer;
   display: block;
@@ -478,7 +548,8 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 }
 
 .jupyter-ml-jobScheduler-contextMenu button:hover {
-  background: var(--jp-layout-color2);
+  background: var(--jp-brand-color3);
+  color: var(--jp-brand-color1);
 }
 
 .jupyter-ml-jobScheduler-fileBrowser {

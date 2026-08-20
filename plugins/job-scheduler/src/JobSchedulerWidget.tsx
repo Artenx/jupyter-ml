@@ -690,7 +690,11 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
     <div className="jupyter-ml-jobScheduler">
       <div className="jupyter-ml-jobScheduler-header">
         {onCreate ? (
-          <button className="jp-mod-styled" type="button" onClick={() => void onCreate()}>
+          <button
+            className="jp-mod-styled jp-mod-accept"
+            type="button"
+            onClick={() => void onCreate()}
+          >
             Create Job
           </button>
         ) : null}

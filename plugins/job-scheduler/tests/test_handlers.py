@@ -165,13 +165,16 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
             xsrf_cookies=False,
         )
 
-    def _create_schedule(self):
-        payload = {
+    def _default_payload(self):
+        return {
             "display_name": "Nightly local pipeline",
             "pipeline_definition": {"id": "test-pipeline"},
             "cron_expression": "0 1 * * *",
             "enabled": True,
         }
+
+    def _create_schedule(self):
+        payload = self._default_payload()
         response = self.fetch("/schedules", method="POST", body=json.dumps(payload))
         assert response.code == 201
         return json.loads(response.body)
@@ -182,6 +185,20 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
 
         response = self.fetch(f"/schedules/{created['id']}")
         assert json.loads(response.body)["display_name"] == "Nightly local pipeline"
+
+    def test_kernel_name_is_persisted(self):
+        payload = self._default_payload()
+        payload["kernel_name"] = "python3-remote"
+        response = self.fetch("/schedules", method="POST", body=json.dumps(payload))
+        created = json.loads(response.body)
+        assert created["kernel_name"] == "python3-remote"
+
+        response = self.fetch(f"/schedules/{created['id']}", method="PUT", body=json.dumps({"kernel_name": "r-k8s"}))
+        assert json.loads(response.body)["kernel_name"] == "r-k8s"
+
+        empty = self._default_payload()
+        empty["kernel_name"] = "   "
+        assert self.fetch("/schedules", method="POST", body=json.dumps(empty)).code == 400
 
         response = self.fetch(f"/schedules/{created['id']}", method="PUT", body=json.dumps({"enabled": False}))
         updated = json.loads(response.body)

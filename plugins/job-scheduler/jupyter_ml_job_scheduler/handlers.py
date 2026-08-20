@@ -77,6 +77,9 @@ class LocalScheduleBaseHandler(APIHandler):
         pipeline_definition = payload.get("pipeline_definition", current.pipeline_definition if current else None)
         cron_expression = payload.get("cron_expression", current.cron_expression if current else None)
         enabled = payload.get("enabled", current.enabled if current else True)
+        kernel_name = payload.get("kernel_name", current.kernel_name if current else None)
+        if kernel_name is not None and (not isinstance(kernel_name, str) or not kernel_name.strip()):
+            raise web.HTTPError(400, reason="kernel_name must be a non-empty string.")
         if not isinstance(display_name, str) or not display_name.strip():
             raise web.HTTPError(400, reason="display_name must be a non-empty string.")
         if not isinstance(pipeline_definition, dict):
@@ -106,6 +109,7 @@ class LocalScheduleBaseHandler(APIHandler):
             next_run_at=current.next_run_at if current else None,
             owner_id=current.owner_id if current else self.owner_id,
             retry_policy=retry_policy,
+            kernel_name=kernel_name,
         )
 
 

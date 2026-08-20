@@ -28,6 +28,7 @@ export interface ILocalSchedule {
   next_run_at: string | null;
   retry_policy: ILocalRetryPolicy;
   retention_policy: ILocalRetentionPolicy;
+  kernel_name: string | null;
 }
 
 export interface ILocalRetryPolicy {
@@ -81,7 +82,65 @@ export interface ILocalSchedulePayload {
   enabled: boolean;
   retry_policy?: ILocalRetryPolicy;
   retention_policy?: ILocalRetentionPolicy;
+  kernel_name?: string | null;
 }
+
+export interface IKernelSpec {
+  name: string;
+  display_name: string;
+  provisioner_name: string | null;
+  category: 'local' | 'remote';
+  category_label: string;
+}
+
+const KERNELSPECS_PATH = 'api/kernelspecs';
+
+export const getKernelCategory = (
+  provisionerName: string | null | undefined
+): { category: 'local' | 'remote'; category_label: string } => {
+  if (!provisionerName || provisionerName === 'local-provisioner') {
+    return { category: 'local', category_label: 'Local' };
+  }
+  const name = provisionerName.toLowerCase();
+  if (name.includes('kubernetes')) {
+    return { category: 'remote', category_label: 'Remote (Kubernetes)' };
+  }
+  if (name.includes('yarn')) {
+    return { category: 'remote', category_label: 'Remote (YARN)' };
+  }
+  if (name.includes('spark')) {
+    return { category: 'remote', category_label: 'Remote (Spark)' };
+  }
+  if (name.includes('distributed')) {
+    return { category: 'remote', category_label: 'Remote (Distributed)' };
+  }
+  if (name.includes('gateway')) {
+    return { category: 'remote', category_label: 'Remote (Gateway)' };
+  }
+  return { category: 'remote', category_label: 'Remote' };
+};
+
+/** List available Jupyter kernelspecs with a derived local/remote category. */
+export const getKernelspecs = async (): Promise<IKernelSpec[]> => {
+  const response = await RequestHandler.makeGetRequest<{
+    kernelspecs: Record<string, { name: string; spec: { display_name: string; metadata: GenericObjectType } }>;
+  }>(KERNELSPECS_PATH);
+  const specs = response?.kernelspecs ?? {};
+  return Object.values(specs).map(({ name, spec }) => {
+    const metadata = spec.metadata ?? {};
+    const provisionerName =
+      (metadata.kernel_provisioner && (metadata.kernel_provisioner as GenericObjectType).provisioner_name) ||
+      null;
+    const { category, category_label } = getKernelCategory(provisionerName as string | null);
+    return {
+      name,
+      display_name: spec.display_name,
+      provisioner_name: provisionerName as string | null,
+      category,
+      category_label
+    };
+  });
+};
 
 export interface ILocalRunResult {
   id: string;

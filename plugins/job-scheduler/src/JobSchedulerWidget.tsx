@@ -230,6 +230,7 @@ export const promptCreateJob = async (options: {
       pipeline_definition: options.pipelineJson,
       cron_expression: result.value.cron_expression,
       enabled: result.value.enabled,
+      kernel_name: result.value.kernel_name || null,
       retry_policy: retryPolicyFromDialog(
         result.value as unknown as IJobSchedulerDialogValue
       ),
@@ -487,6 +488,7 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
           displayName={selectedSchedule.display_name}
           cronExpression={selectedSchedule.cron_expression}
           enabled={selectedSchedule.enabled}
+          kernelName={selectedSchedule.kernel_name}
           retryPolicy={selectedSchedule.retry_policy}
           retentionPolicy={selectedSchedule.retention_policy}
         />
@@ -501,6 +503,7 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
         selectedSchedule.id,
         {
           ...result.value,
+          kernel_name: result.value.kernel_name || null,
           retry_policy: retryPolicyFromDialog(
             result.value as unknown as IJobSchedulerDialogValue
           ),
@@ -775,6 +778,9 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
                 </span>
               ) : null}
               <span className="jupyter-ml-jobScheduler-itemMeta">{schedule.cron_expression}</span>
+              {schedule.kernel_name ? (
+                <span className="jupyter-ml-jobScheduler-itemMeta">Kernel: {schedule.kernel_name}</span>
+              ) : null}
               <span className="jupyter-ml-jobScheduler-itemRow">
                 <span className={`jupyter-ml-status is-${schedule.enabled ? 'enabled' : 'disabled'}`}>
                   {schedule.enabled ? 'Enabled' : 'Disabled'}

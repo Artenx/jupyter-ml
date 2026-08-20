@@ -16,6 +16,8 @@
 
 import * as React from 'react';
 
+import { getKernelspecs, IKernelSpec } from './JobSchedulerService';
+
 export interface IJobSchedulerDialogValue {
   retry_max_attempts: string | number;
   retry_initial_delay_seconds: string | number;
@@ -23,6 +25,7 @@ export interface IJobSchedulerDialogValue {
   retention_mode: string;
   retention_max_records: string | number;
   retention_days: string | number;
+  kernel_name: string;
 }
 
 export const retryPolicyFromDialog = (
@@ -53,6 +56,7 @@ interface IJobSchedulerDialogProps {
   displayName: string;
   cronExpression?: string;
   enabled?: boolean;
+  kernelName?: string | null;
   retryPolicy?: {
     max_attempts: number;
     initial_delay_seconds: number;
@@ -70,6 +74,7 @@ export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
   displayName,
   cronExpression = '0 * * * *',
   enabled = true,
+  kernelName = null,
   retryPolicy = {
     max_attempts: 3,
     initial_delay_seconds: 60,
@@ -82,6 +87,26 @@ export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
   }
 }) => {
   const [retentionMode, setRetentionMode] = React.useState(retentionPolicy.retention_mode);
+  const [kernelspecs, setKernelspecs] = React.useState<IKernelSpec[]>([]);
+  const [kernelspecsError, setKernelspecsError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    getKernelspecs()
+      .then(specs => {
+        if (active) {
+          setKernelspecs(specs);
+        }
+      })
+      .catch(err => {
+        if (active) {
+          setKernelspecsError('Failed to load kernelspecs.');
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <form className="jupyter-ml-dialog-form">
@@ -108,6 +133,20 @@ export const JobSchedulerDialog: React.FC<IJobSchedulerDialogProps> = ({
       <p className="jupyter-ml-jobScheduler-hint">
         Five fields: minute hour day-of-month month day-of-week
       </p>
+      <label htmlFor="job_kernel">Kernel:</label>
+      <br />
+      <select id="job_kernel" name="kernel_name" defaultValue={kernelName ?? ''}>
+        <option value="">Use pipeline default</option>
+        {kernelspecs.map(spec => (
+          <option key={spec.name} value={spec.name}>
+            {spec.display_name} — {spec.category_label}
+          </option>
+        ))}
+      </select>
+      {kernelspecsError && (
+        <p className="jupyter-ml-jobScheduler-hint">{kernelspecsError}</p>
+      )}
+      <br />
       <input
         id="job_enabled"
         name="enabled"

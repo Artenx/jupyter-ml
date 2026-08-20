@@ -374,6 +374,7 @@ class LocalPipelineScheduler:
             output_observer=lambda level, message, operation_name: self.run_store.append_log(
                 run, RunLogEntry(datetime.now(), level, message, operation_name)
             ),
+            kernel_name=schedule.kernel_name,
         )
 
     def _save_remote_kernel_id(self, run: LocalScheduledRun, kernel_id: str) -> None:

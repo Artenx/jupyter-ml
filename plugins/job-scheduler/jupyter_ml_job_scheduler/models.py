@@ -171,6 +171,7 @@ class LocalSchedule:
     owner_id: str = "default"
     retry_policy: RetryPolicy = field(default_factory=RetryPolicy)
     retention_policy: RetentionPolicy = field(default_factory=RetentionPolicy)
+    kernel_name: Optional[str] = None
 
     def __post_init__(self) -> None:
         CronExpression(self.cron_expression)
@@ -198,6 +199,7 @@ class LocalSchedule:
             owner_id=value.get("owner_id", "default"),
             retry_policy=RetryPolicy.from_dict(value.get("retry_policy")),
             retention_policy=RetentionPolicy.from_dict(value.get("retention_policy")),
+            kernel_name=value.get("kernel_name"),
         )
 
 

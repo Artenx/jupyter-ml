@@ -67,6 +67,7 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
         remote_kernel_observer: Optional[Callable[[str], None]] = None,
         result_observer: Optional[RunResultObserver] = None,
         output_observer: Optional[OutputObserver] = None,
+        kernel_name: Optional[str] = None,
     ):
         filepath = self.get_valid_filepath(operation.filename)
         file_dir = os.path.dirname(filepath)
@@ -79,6 +80,9 @@ class NotebookOperationProcessor(BaseNotebookOperationProcessor):
         additional_kwargs["cwd"] = file_dir
         additional_kwargs["kernel_cwd"] = file_dir
         additional_kwargs["kernel_env"] = OperationProcessor._collect_envs(operation, elyra_run_name)
+        if kernel_name:
+            additional_kwargs["kernel_name"] = kernel_name
+            self.log.debug(f"Using requested kernel: {kernel_name}")
         if GatewayClient.instance().gateway_enabled:
             additional_kwargs["kernel_manager_class"] = "jupyter_server.gateway.managers.GatewayKernelManager"
             additional_kwargs["kernel_id_observer"] = remote_kernel_observer
@@ -253,6 +257,7 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
         remote_kernel_observer: Optional[Callable[[str], None]] = None,
         result_observer: Optional[RunResultObserver] = None,
         output_observer: Optional[OutputObserver] = None,
+        kernel_name: Optional[str] = None,
     ):
         self.log_pipeline_info(pipeline.name, "processing pipeline")
         self._notify(run_observer, "INFO", "Local pipeline processing started.")
@@ -270,7 +275,7 @@ class LocalPipelineProcessor(BaseLocalPipelineProcessor):
                 operation_processor = self._operation_processor_catalog[operation.classifier]
                 if isinstance(operation_processor, NotebookOperationProcessor):
                     operation_processor.process(
-                        operation, elyra_run_name, remote_kernel_observer, result_observer, output_observer
+                        operation, elyra_run_name, remote_kernel_observer, result_observer, output_observer, kernel_name
                     )
                 elif isinstance(operation_processor, (PythonScriptOperationProcessor, RScriptOperationProcessor)):
                     operation_processor.process(

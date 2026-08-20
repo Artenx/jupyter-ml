@@ -18,7 +18,7 @@ import * as React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 
-import { JobSchedulerService } from '../JobSchedulerService';
+import { JobSchedulerService, getKernelCategory } from '../JobSchedulerService';
 import { RequestHandler } from '../requestHandler';
 import {
   formatJobTime,
@@ -198,7 +198,8 @@ describe('@jupyter-ml/job-scheduler', () => {
           retention_mode: 'records' as const,
           max_records: 100,
           retention_days: 90
-        }
+        },
+        kernel_name: null
       };
       jest
         .spyOn(JobSchedulerService, 'listSchedules')
@@ -329,5 +330,30 @@ describe('@jupyter-ml/job-scheduler', () => {
         expect(logWidget.node.textContent).toContain('Started on gateway');
       });
     });
+  });
+});
+
+describe('getKernelCategory', () => {
+  it('labels local-provisioner as Local', () => {
+    expect(getKernelCategory('local-provisioner')).toEqual({
+      category: 'local',
+      category_label: 'Local'
+    });
+  });
+
+  it('labels unknown provisioners as Remote by default', () => {
+    expect(getKernelCategory(null)).toEqual({
+      category: 'local',
+      category_label: 'Local'
+    });
+  });
+
+  it('derives cluster-specific remote labels', () => {
+    expect(getKernelCategory('kubernetes-provisioner').category_label).toBe('Remote (Kubernetes)');
+    expect(getKernelCategory('yarn-provisioner').category_label).toBe('Remote (YARN)');
+    expect(getKernelCategory('spark-provisioner').category_label).toBe('Remote (Spark)');
+    expect(getKernelCategory('distributed-provisioner').category_label).toBe('Remote (Distributed)');
+    expect(getKernelCategory('gateway-provisioner').category_label).toBe('Remote (Gateway)');
+    expect(getKernelCategory('custom-remote').category_label).toBe('Remote');
   });
 });

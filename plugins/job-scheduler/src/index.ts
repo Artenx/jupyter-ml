@@ -98,7 +98,11 @@ const extension: JupyterFrontEndPlugin<void> = {
         const model = await contentsManager.get(selectedPath, {
           content: true
         });
-        const pipelineJson = model.content as GenericObjectType;
+        const rawContent = model.content;
+        const pipelineJson =
+          typeof rawContent === 'string'
+            ? (JSON.parse(rawContent) as GenericObjectType)
+            : (rawContent as GenericObjectType);
         const primaryPipeline =
           pipelineJson?.pipelines?.[0] ?? ({} as GenericObjectType);
         const nodes = primaryPipeline?.nodes as unknown[];

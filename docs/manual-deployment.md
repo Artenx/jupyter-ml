@@ -30,9 +30,11 @@
 | `nbdime` | 4.0.4 | Notebook diff（可选） |
 | `notebook_shim` | 0.2.4 | 兼容层（可选） |
 | `jupyter_server_terminals` | 0.5.4 | 终端（随 jupyter_server 拉入） |
-| `jupyter-ml-job-scheduler`（本插件） | 0.1.0 | 定时调度插件 |
+| `jupyter-ml-job-scheduler`（本插件） | 0.1.0 | 定时调度插件（wheel 内置前端） |
+| `jupyter-ml-image-builder`（同仓插件） | 0.1.0 | 镜像构建插件（wheel 内置前端，可选） |
 
-> 以上 Python 包通过 `pip` 安装；前端扩展通过 `jlpm`（JupyterLab 自带）构建。
+> 以上 Python 包与两个插件均通过 `pip` 安装；插件 wheel 已将前端联邦扩展打包在内
+> （`jupyter_ml_*/labextension/`），无需 `jlpm` 单独构建或 `jupyter labextension install` 注册。
 
 ---
 
@@ -100,14 +102,21 @@ jlpm --version
 
 ---
 
-## 3. 安装 job-scheduler 插件（Python 端）
+## 3. 安装插件（Python 端 + 内置前端，均通过 wheel）
 
-进入插件目录并安装（开发态用 editable，生产可去掉 `-e`）：
+两个插件均已将前端联邦扩展打包进 Python wheel（`jupyter_ml_*/labextension/`），
+因此只需一条 `pip install` 命令即可同时装好后端与前端，无需 `jlpm build` 或
+`jupyter labextension install`。
 
 ```bash
-cd /path/to/jupyter-ml/plugins/job-scheduler
-pip install -e .
+# job-scheduler
+pip install /path/to/jupyter-ml/plugins/job-scheduler/dist/jupyter_ml_job_scheduler-0.1.0-py3-none-any.whl
+
+# image-builder（同仓插件，可选）
+pip install /path/to/jupyter-ml/plugins/image-builder/dist/jupyter_ml_image_builder-0.1.0-py3-none-any.whl
 ```
+
+> 若 `dist/` 下尚未生成 wheel（例如仅拿到源码），见第 4 节“从源码构建 wheel”。
 
 验证包已注册：
 
@@ -118,10 +127,12 @@ python -c "import jupyter_ml_job_scheduler; print(jupyter_ml_job_scheduler._vers
 
 ---
 
-## 4. 构建并安装前端 labextension
+## 4. 从源码构建 wheel（可选，仅当你只有源码、无现成 dist/）
 
-前端扩展需要先安装 Node 依赖、再用 `jlpm build` 编译，最后用
-`jupyter labextension install` 注册到 JupyterLab。
+若仓库已自带 `dist/*.whl`，直接跳到第 3 节的 `pip install` 即可，无需本节。
+
+每个插件目录内：先装前端依赖并编译，再用标准构建后端打出 wheel（前端产物会
+自动落入 `jupyter_ml_*/labextension/`，随 wheel 一起发布）。
 
 ```bash
 cd /path/to/jupyter-ml/plugins/job-scheduler
@@ -129,21 +140,24 @@ cd /path/to/jupyter-ml/plugins/job-scheduler
 # 1) 安装前端依赖（生成 node_modules）
 jlpm install
 
-# 2) 编译 TS + 打包联邦扩展（产出到 share/jupyter/labextensions）
+# 2) 编译 TS + 打包联邦扩展（产出到 jupyter_ml_job_scheduler/labextension/）
 jlpm build
 
-# 3) 将预构建扩展注册进 JupyterLab（--no-build 表示不重复打包）
-jupyter labextension install . --no-build
+# 3) 打出 wheel（含前端）
+python -m build --wheel
+# 产物：dist/jupyter_ml_job_scheduler-0.1.0-py3-none-any.whl
 ```
 
-验证扩展已安装：
+image-builder 同理（目录换成 `plugins/image-builder`）。
+
+验证 wheel 内含前端：
 
 ```bash
-jupyter labextension list
-# 期望看到：@jupyter-ml/job-scheduler  enabled  ...
+unzip -l dist/jupyter_ml_job_scheduler-0.1.0-py3-none-any.whl | grep labextension
 ```
 
-> 若已安装过，重复执行 `jlpm build && jupyter labextension install . --no-build` 会覆盖更新，幂等安全。
+> 开发态若想 Python 源码改动免重装，可用 `pip install -e .`（editable）；
+> 但前端改动仍需 `jlpm build` 后重打 wheel，再 `pip install --force-reinstall dist/*.whl`。
 
 ---
 
@@ -195,7 +209,7 @@ c.ServerApp.jpserver_extensions = {
 ```
 
 > 若还部署了同仓的 `jupyter-ml-image-builder` 插件，可在 `jpserver_extensions` 中追加
-> `"jupyter_ml_image_builder": True`（需先 `pip install` 该插件）。
+> `"jupyter_ml_image_builder": True`（已通过第 3 节 `pip install` 安装）。
 
 确保目录存在：
 
@@ -355,20 +369,22 @@ kernelspec（向后兼容）**。
 将仓库作为构建上下文（`/workspace/jupyter-ml`）。`Dockerfile` 放在仓库根目录：
 
 ```dockerfile
-# ---------- 阶段 1：前端构建 ----------
-# 需要 jupyterlab 提供 jlpm，以及 node 执行 tsc/打包
-FROM python:3.11-slim AS frontend
+# ---------- 阶段 1：构建插件 wheel（含前端） ----------
+FROM python:3.11-slim AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential git curl nodejs npm \
     && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir jupyterlab==4.4.2
+RUN pip install --no-cache-dir jupyterlab==4.4.2 build
 
 WORKDIR /build
 COPY plugins/job-scheduler ./plugins/job-scheduler
-WORKDIR /build/plugins/job-scheduler
-# jlpm 由 jupyterlab 提供；build = tsc + jupyter labextension build .
-RUN jlpm install \
-    && jlpm build
+COPY plugins/image-builder ./plugins/image-builder
+
+# 每个插件的 wheel：前端经 jlpm build 落入 jupyter_ml_*/labextension/，随 wheel 发布
+RUN cd /build/plugins/job-scheduler \
+    && jlpm install && jlpm build && python -m build --wheel --outdir /wheels
+RUN cd /build/plugins/image-builder \
+    && jlpm install && jlpm build && python -m build --wheel --outdir /wheels
 
 # ---------- 阶段 2：运行时 ----------
 FROM python:3.11-slim
@@ -389,11 +405,9 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# 安装插件（Python 端）
-RUN pip install --no-cache-dir -e /app/plugins/job-scheduler
-
-# 拷贝阶段 1 产出的预构建扩展
-COPY --from=frontend /usr/local/share/jupyter/labextensions /usr/local/share/jupyter/labextensions
+# 安装插件：直接 pip install 预构建 wheel（已含前端，无需 labextension install）
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir /wheels/*.whl
 
 # 固化配置
 RUN mkdir -p /root/.jupyter \

@@ -206,7 +206,22 @@ class LocalRunLogsHandler(LocalScheduleBaseHandler):
     async def get(self, run_id: str) -> None:
         if self.scheduler.run_store.get(run_id, owner_id=self.owner_id) is None:
             raise web.HTTPError(404, reason=f"Local scheduled run '{run_id}' was not found.")
-        self.finish({"logs": [entry.to_dict() for entry in self.scheduler.run_store.logs(run_id)]})
+        offset = int(self.get_query_argument("offset", "0"))
+        limit_arg = self.get_query_argument("limit", None)
+        tail = self.get_query_argument("tail", "0") in ("1", "true", "True")
+        limit = int(limit_arg) if limit_arg is not None else None
+        total = self.scheduler.run_store.log_total(run_id)
+        # When tailing, serve the most recent `limit` lines instead of the head.
+        start = max(0, total - limit) if (tail and limit is not None) else max(0, offset)
+        entries = self.scheduler.run_store.logs(run_id, offset=start, limit=limit)
+        self.finish(
+            {
+                "logs": [entry.to_dict() for entry in entries],
+                "total": total,
+                "offset": start,
+                "limit": limit,
+            }
+        )
 
 
 class LocalScheduleRunHandler(LocalScheduleBaseHandler):

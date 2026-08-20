@@ -31,6 +31,7 @@ import {
   promptCreateJob,
   promptSelectPipelineFile
 } from './JobSchedulerWidget';
+import { JobSchedulerService } from './JobSchedulerService';
 import { GenericObjectType } from './types';
 
 import '../style/index.css';
@@ -148,18 +149,17 @@ const extension: JupyterFrontEndPlugin<void> = {
     const jobRunLogWidgets = new Map<string, JobRunLogWidget>();
     const jobSchedulerWidget = new JobSchedulerWidget({
       onCreate: createJobFromActiveEditor,
-      onOpenLogs: (run, logs): void => {
+      onOpenLogs: (run): void => {
         let logWidget = jobRunLogWidgets.get(run.id);
         if (!logWidget || logWidget.isDisposed) {
           if (logWidget && logWidget.isDisposed) {
             jobRunLogWidgets.delete(run.id);
           }
-          logWidget = new JobRunLogWidget(run, logs);
+          logWidget = new JobRunLogWidget(run, (offset, limit, tail) =>
+            JobSchedulerService.getLogs(run.id, offset, limit, tail)
+          );
           jobRunLogWidgets.set(run.id, logWidget);
           logWidget.disposed.connect(() => jobRunLogWidgets.delete(run.id));
-          app.shell.add(logWidget, 'main', { mode: 'tab-after' });
-        } else {
-          logWidget.setLogs(logs);
           app.shell.add(logWidget, 'main', { mode: 'tab-after' });
         }
         logWidget.activate();

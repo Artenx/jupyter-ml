@@ -44,35 +44,114 @@ export const formatJobTime = (value: string | null): string => {
 };
 
 /** Main-area log view presented with a file-like title for a selected run. */
-export class JobRunLogWidget extends ReactWidget {
-  private logs: ILocalRunLogEntry[];
-  private errorSummary: string | null;
+export interface ILogPage {
+  logs: ILocalRunLogEntry[];
+  total: number;
+  offset: number;
+  limit: number | null;
+}
 
-  constructor(run: ILocalScheduledRun, logs: ILocalRunLogEntry[]) {
+const LOG_PAGE_SIZE = 500;
+
+export class JobRunLogWidget extends ReactWidget {
+  private run: ILocalScheduledRun;
+  private fetchLogs: (
+    offset: number,
+    limit: number,
+    tail: boolean
+  ) => Promise<ILogPage>;
+  private logs: ILocalRunLogEntry[] = [];
+  private total = 0;
+  private loadedStart = 0;
+  private loading = false;
+  private error: string | null = null;
+
+  constructor(
+    run: ILocalScheduledRun,
+    fetchLogs: (
+      offset: number,
+      limit: number,
+      tail: boolean
+    ) => Promise<ILogPage>
+  ) {
     super();
-    this.logs = logs;
-    this.errorSummary = run.error_summary ?? null;
+    this.run = run;
+    this.fetchLogs = fetchLogs;
     this.id = `jupyter-ml-local-run-${run.id}-log`;
     this.title.label = formatJobTime(run.started_at ?? run.scheduled_at);
     this.title.caption = 'Local pipeline run log';
     this.title.closable = true;
     this.addClass('jupyter-ml-JobRunLogWidget');
+    void this.loadInitial();
   }
 
-  setLogs(logs: ILocalRunLogEntry[]): void {
-    this.logs = logs;
+  private async loadInitial(): Promise<void> {
+    this.loading = true;
+    this.error = null;
     this.update();
+    try {
+      const page = await this.fetchLogs(0, LOG_PAGE_SIZE, true);
+      this.logs = page.logs;
+      this.total = page.total;
+      this.loadedStart = page.offset;
+    } catch (err) {
+      this.error = 'Failed to load logs.';
+      console.error('Failed to load run logs:', err);
+    } finally {
+      this.loading = false;
+      this.update();
+    }
+  }
+
+  private async loadEarlier(): Promise<void> {
+    if (this.loading || this.loadedStart <= 0) {
+      return;
+    }
+    this.loading = true;
+    this.error = null;
+    this.update();
+    try {
+      const newStart = Math.max(0, this.loadedStart - LOG_PAGE_SIZE);
+      const page = await this.fetchLogs(newStart, LOG_PAGE_SIZE, false);
+      this.logs = [...page.logs, ...this.logs];
+      this.loadedStart = page.offset;
+    } catch (err) {
+      this.error = 'Failed to load earlier logs.';
+      console.error('Failed to load earlier logs:', err);
+    } finally {
+      this.loading = false;
+      this.update();
+    }
   }
 
   render(): JSX.Element {
     const groups = this.groupLogsByOperation();
+    const showEarlier = this.loadedStart > 0 && !this.loading;
     return (
       <>
-        {this.errorSummary ? (
-          <p className="jupyter-ml-jobScheduler-error">{this.errorSummary}</p>
+        {this.error ? (
+          <p className="jupyter-ml-jobScheduler-error">{this.error}</p>
+        ) : null}
+        {this.run.error_summary ? (
+          <p className="jupyter-ml-jobScheduler-error">{this.run.error_summary}</p>
+        ) : null}
+        <div className="jupyter-ml-jobScheduler-logMeta">
+          {this.loading
+            ? 'Loading logs...'
+            : this.total > 0
+            ? `Showing ${this.logs.length} of ${this.total} log lines`
+            : 'No log entries.'}
+        </div>
+        {showEarlier ? (
+          <button
+            className="jupyter-ml-jobScheduler-loadEarlier"
+            onClick={() => void this.loadEarlier()}
+          >
+            Load earlier logs
+          </button>
         ) : null}
         <div className="jupyter-ml-jobScheduler-logGroups">
-          {groups.length === 0 ? (
+          {groups.length === 0 && !this.loading ? (
             <p className="jupyter-ml-jobScheduler-empty">No log entries.</p>
           ) : (
             groups.map((group) => (
@@ -314,10 +393,7 @@ export const promptSelectPipelineFile = async (
 
 interface IJobSchedulerPanelProps {
   onCreate?: () => Promise<void>;
-  onOpenLogs?: (
-    run: ILocalScheduledRun,
-    logs: ILocalRunLogEntry[]
-  ) => void;
+  onOpenLogs?: (run: ILocalScheduledRun) => void;
 }
 
 export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
@@ -482,12 +558,7 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
   };
 
   const loadLogs = async (run: ILocalScheduledRun): Promise<void> => {
-    try {
-      const nextLogs = await JobSchedulerService.getLogs(run.id);
-      onOpenLogs?.(run, nextLogs);
-    } catch (error) {
-      await RequestErrors.serverError(error as IErrorResponse);
-    }
+    onOpenLogs?.(run);
   };
 
   const runNow = async (): Promise<void> => {
@@ -763,13 +834,11 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
 /** Sidebar widget for listing and managing persistent jobs. */
 export class JobSchedulerWidget extends ReactWidget {
   private readonly onCreate: (() => Promise<void>) | undefined;
-  private readonly onOpenLogs:
-    | ((run: ILocalScheduledRun, logs: ILocalRunLogEntry[]) => void)
-    | undefined;
+  private readonly onOpenLogs: ((run: ILocalScheduledRun) => void) | undefined;
 
   constructor(options?: {
     onCreate?: () => Promise<void>;
-    onOpenLogs?: (run: ILocalScheduledRun, logs: ILocalRunLogEntry[]) => void;
+    onOpenLogs?: (run: ILocalScheduledRun) => void;
   }) {
     super();
     this.onCreate = options?.onCreate;

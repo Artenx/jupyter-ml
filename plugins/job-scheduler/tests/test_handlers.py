@@ -212,6 +212,35 @@ class TestLocalScheduleHandlers(AsyncHTTPTestCase):
         assert [entry["message"] for entry in json.loads(response.body)["logs"]] == ["Started", "Finished"]
         assert self.fetch("/runs/missing-run/logs").code == 404
 
+    def test_run_logs_pagination(self):
+        created = self._create_schedule()
+        now = datetime.now()
+        run = LocalScheduledRun(
+            id="paged-run",
+            schedule_id=created["id"],
+            status="succeeded",
+            scheduled_at=now,
+            started_at=now,
+            finished_at=now,
+            owner_id="test-user",
+        )
+        self.scheduler.run_store.save(run)
+        for index in range(5):
+            self.scheduler.run_store.append_log(run, RunLogEntry(now, "INFO", f"line-{index}"))
+
+        # Tail returns the most recent `limit` lines without loading everything.
+        tail = self.fetch("/runs/paged-run/logs?limit=2&tail=1")
+        tail_body = json.loads(tail.body)
+        assert tail_body["total"] == 5
+        assert tail_body["offset"] == 3
+        assert [entry["message"] for entry in tail_body["logs"]] == ["line-3", "line-4"]
+
+        # Offset/limit slices from the head of the file.
+        head = self.fetch("/runs/paged-run/logs?offset=1&limit=2")
+        head_body = json.loads(head.body)
+        assert head_body["offset"] == 1
+        assert [entry["message"] for entry in head_body["logs"]] == ["line-1", "line-2"]
+
     def test_run_control_results_and_owner_isolation(self):
         created = self._create_schedule()
         now = datetime.now()

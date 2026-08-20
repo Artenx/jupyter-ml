@@ -101,6 +101,9 @@ interface ILocalRunsResponse {
 
 interface ILocalRunLogsResponse {
   logs: ILocalRunLogEntry[];
+  total: number;
+  offset: number;
+  limit: number | null;
 }
 
 interface ILocalRunResultsResponse {
@@ -178,11 +181,17 @@ export class JobSchedulerService {
     return response?.runs ?? [];
   }
 
-  static async getLogs(runId: string): Promise<ILocalRunLogEntry[]> {
+  static async getLogs(
+    run: string,
+    offset = 0,
+    limit = 500,
+    tail = false
+  ): Promise<ILocalRunLogsResponse> {
+    const query = `?offset=${offset}&limit=${limit}${tail ? '&tail=1' : ''}`;
     const response = await RequestHandler.makeGetRequest<ILocalRunLogsResponse>(
-      `${RUNS_PATH}/${encodeURIComponent(runId)}/logs`
+      `${RUNS_PATH}/${encodeURIComponent(run)}/logs${query}`
     );
-    return response?.logs ?? [];
+    return response ?? { logs: [], total: 0, offset, limit };
   }
 
   static async runNow(scheduleId: string): Promise<ILocalScheduledRun | undefined> {

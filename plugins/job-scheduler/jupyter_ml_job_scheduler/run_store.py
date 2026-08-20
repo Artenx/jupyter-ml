@@ -101,12 +101,30 @@ class RunStore:
             with log_path.open("a", encoding="utf-8") as file:
                 file.write(json.dumps(entry.to_dict()) + "\n")
 
-    def logs(self, run_id: str) -> List[RunLogEntry]:
+    def log_total(self, run_id: str) -> int:
+        """Return the number of persisted log lines for a run without loading them."""
+        log_path = self.logs_dir / f"{run_id}.jsonl"
+        if not log_path.exists():
+            return 0
+        with log_path.open(encoding="utf-8") as file:
+            return sum(1 for line in file if line.strip())
+
+    def logs(
+        self,
+        run_id: str,
+        offset: int = 0,
+        limit: Optional[int] = None,
+    ) -> List[RunLogEntry]:
         log_path = self.logs_dir / f"{run_id}.jsonl"
         if not log_path.exists():
             return []
         with log_path.open(encoding="utf-8") as file:
-            return [RunLogEntry.from_dict(json.loads(line)) for line in file if line.strip()]
+            lines = [line for line in file if line.strip()]
+        start = max(0, offset)
+        end = len(lines) if limit is None else min(len(lines), start + limit)
+        return [
+            RunLogEntry.from_dict(json.loads(line)) for line in lines[start:end]
+        ]
 
     def list_results(self, run_id: str) -> List[RunResult]:
         if not self.results_path.exists():

@@ -98,7 +98,7 @@ describe('@jupyter-ml/job-scheduler', () => {
         JSON.stringify({ enabled: false })
       );
       expect(getRequest).toHaveBeenCalledWith(
-        'jupyter-ml/local/runs/run%2Fone/logs'
+        'jupyter-ml/local/runs/run%2Fone/logs?offset=0&limit=500'
       );
       expect(deleteRequest).toHaveBeenCalledWith(
         'jupyter-ml/local/schedules/daily%2Fschedule'
@@ -263,14 +263,19 @@ describe('@jupyter-ml/job-scheduler', () => {
           next_retry_at: null
         }
       ]);
-      jest.spyOn(JobSchedulerService, 'getLogs').mockResolvedValue([
-        {
-          timestamp: '2026-07-31T09:00:00',
-          level: 'INFO',
-          message: 'Started on gateway',
-          operation_name: null
-        }
-      ]);
+      jest.spyOn(JobSchedulerService, 'getLogs').mockResolvedValue({
+        logs: [
+          {
+            timestamp: '2026-07-31T09:00:00',
+            level: 'INFO',
+            message: 'Started on gateway',
+            operation_name: null
+          }
+        ],
+        total: 1,
+        offset: 0,
+        limit: 500
+      });
       jest.spyOn(JobSchedulerService, 'getResults').mockResolvedValue([]);
 
       const onOpenLogs = jest.fn();
@@ -308,14 +313,19 @@ describe('@jupyter-ml/job-scheduler', () => {
         expect(container.textContent).toContain('gateway-kernel-1');
 
         const run = { id: 'direct-run' } as never;
-        const logWidget = new JobRunLogWidget(run, [
-          {
-            timestamp: '2026-07-31T09:00:00',
-            level: 'INFO',
-            message: 'Started on gateway',
-            operation_name: null
-          }
-        ]);
+        const logWidget = new JobRunLogWidget(run, async () => ({
+          logs: [
+            {
+              timestamp: '2026-07-31T09:00:00',
+              level: 'INFO',
+              message: 'Started on gateway',
+              operation_name: null
+            }
+          ],
+          total: 1,
+          offset: 0,
+          limit: 500
+        }));
         expect(logWidget.node.textContent).toContain('Started on gateway');
       });
     });

@@ -366,6 +366,32 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   margin: 6px 0;
 }
 
+.jupyter-ml-jobScheduler-logMeta {
+  color: var(--jp-ui-font-color2);
+  font-size: var(--jp-ui-font-size0);
+  margin: 6px 0 4px;
+}
+
+.jupyter-ml-jobScheduler-loadEarlier {
+  background: var(--jp-layout-color2);
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  color: var(--jp-ui-font-color0);
+  cursor: pointer;
+  font-size: var(--jp-ui-font-size0);
+  margin: 4px 0;
+  padding: 4px 10px;
+}
+
+.jupyter-ml-jobScheduler-loadEarlier:hover {
+  background: var(--jp-layout-color3);
+}
+
+.jupyter-ml-jobScheduler-loadEarlier:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .jupyter-ml-jobScheduler-logGroup {
   border: 1px solid var(--jp-border-color2);
   border-radius: 4px;

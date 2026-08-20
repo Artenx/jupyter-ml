@@ -164,61 +164,140 @@ export const promptCreateJob = async (options: {
   }
 };
 
-/** File picker dialog for selecting a .pipeline file from the workspace. */
-const PipelineFilePicker: React.FC<{
-  files: string[];
-  selected: string;
+/** Navigable file browser for selecting a .pipeline file from any subdirectory. */
+const PipelineFileBrowser: React.FC<{
+  contentsManager: ContentsManager;
   onSelect: (path: string) => void;
-}> = ({ files, selected, onSelect }) => {
+}> = ({ contentsManager, onSelect }) => {
+  const [currentDir, setCurrentDir] = React.useState('');
+  const [items, setItems] = React.useState<
+    { name: string; path: string; type: string }[]
+  >([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = React.useState('');
+
+  const loadDir = React.useCallback(
+    async (dir: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const model = await contentsManager.get(dir, { content: true });
+        if (model.type === 'directory' && model.content) {
+          const entries = (model.content as any[])
+            .filter(
+              (item: any) =>
+                item.type === 'directory' || item.name.endsWith('.pipeline')
+            )
+            .map((item: any) => ({
+              name: item.name,
+              path: item.path,
+              type: item.type
+            }))
+            .sort((a: any, b: any) => {
+              if (a.type !== b.type) {
+                return a.type === 'directory' ? -1 : 1;
+              }
+              return a.name.localeCompare(b.name);
+            });
+          setItems(entries);
+          setCurrentDir(dir);
+        }
+      } catch (err) {
+        setError(`Failed to list "${dir || '/'}"`);
+        console.error('Failed to list directory:', err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [contentsManager]
+  );
+
+  React.useEffect(() => {
+    loadDir('');
+  }, [loadDir]);
+
+  const segments = currentDir ? currentDir.split('/') : [];
+
   return (
-    <div className="jupyter-ml-jobScheduler-filePicker">
-      {files.length === 0 ? (
+    <div className="jupyter-ml-jobScheduler-fileBrowser">
+      <div className="jupyter-ml-jobScheduler-breadcrumb">
+        <span
+          className="jupyter-ml-jobScheduler-crumb"
+          onClick={() => loadDir('')}
+        >
+          /
+        </span>
+        {segments.map((seg, i) => {
+          const p = segments.slice(0, i + 1).join('/');
+          return (
+            <span key={p}>
+              <span className="jupyter-ml-jobScheduler-sep">/</span>
+              <span
+                className="jupyter-ml-jobScheduler-crumb"
+                onClick={() => loadDir(p)}
+              >
+                {seg}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+      {error ? (
+        <p className="jupyter-ml-jobScheduler-error">{error}</p>
+      ) : loading ? (
+        <p className="jupyter-ml-jobScheduler-empty">Loading...</p>
+      ) : items.length === 0 ? (
         <p className="jupyter-ml-jobScheduler-empty">
-          No .pipeline files found in the workspace.
+          No pipeline files or folders here.
         </p>
       ) : (
-        <select
-          className="jp-mod-styled"
-          value={selected}
-          onChange={(e) => onSelect(e.target.value)}
-          style={{ width: '100%', minHeight: '120px' }}
-          size={6}
-        >
-          {files.map((file) => (
-            <option key={file} value={file}>
-              {file}
-            </option>
-          ))}
-        </select>
+        <ul className="jupyter-ml-jobScheduler-fileList">
+          {items.map((item) => {
+            const isDir = item.type === 'directory';
+            const cls =
+              'jupyter-ml-jobScheduler-fileItem ' +
+              (isDir ? 'is-dir' : 'is-file') +
+              (selectedPath === item.path ? ' is-selected' : '');
+            return (
+              <li
+                key={item.path}
+                className={cls}
+                onClick={() => {
+                  if (isDir) {
+                    loadDir(item.path);
+                  } else {
+                    setSelectedPath(item.path);
+                    onSelect(item.path);
+                  }
+                }}
+              >
+                {item.name}
+              </li>
+            );
+          })}
+        </ul>
       )}
+      {selectedPath ? (
+        <div className="jupyter-ml-jobScheduler-selectedPath">
+          Selected: {selectedPath}
+        </div>
+      ) : null}
     </div>
   );
 };
 
-/** Show a file picker dialog to select a .pipeline file. */
+/** Show a file picker dialog to select a .pipeline file from any subdirectory. */
 export const promptSelectPipelineFile = async (
   contentsManager: ContentsManager
 ): Promise<string | null> => {
-  let pipelineFiles: string[] = [];
-  try {
-    const model = await contentsManager.get('', { content: true });
-    if (model.type === 'directory' && model.content) {
-      pipelineFiles = model.content
-        .filter((item: any) => item.name.endsWith('.pipeline'))
-        .map((item: any) => item.path);
-    }
-  } catch (error) {
-    console.error('Failed to list pipeline files:', error);
-  }
-
-  let selectedFile = pipelineFiles[0] || '';
+  let selectedFile = '';
 
   const result = await showDialog({
     title: 'Select Pipeline File',
     body: (
-      <PipelineFilePicker
-        files={pipelineFiles}
-        selected={selectedFile}
+      <PipelineFileBrowser
+        contentsManager={contentsManager}
         onSelect={(path) => {
           selectedFile = path;
         }}

@@ -102,27 +102,35 @@ jlpm --version
 
 ---
 
-## 3. 安装插件（Python 端 + 内置前端，均通过 wheel）
+## 3. 安装插件（Python 端 + 前端，wheel + 注册）
 
-两个插件均已将前端联邦扩展打包进 Python wheel（`jupyter_ml_*/labextension/`），
-因此只需一条 `pip install` 命令即可同时装好后端与前端，无需 `jlpm build` 或
-`jupyter labextension install`。
+两个插件的前端联邦扩展已随 Python wheel 打包（`jupyter_ml_*/labextension/`）。
+但 JupyterLab 只会从 `share/jupyter/labextensions/@jupyter-ml/<name>` 动态加载联邦扩展，
+而 `pip install` 在本环境下不会把 wheel 内的前端资源拷贝到该路径（会被装到
+`dist-packages/share` 等不被扫描的位置）。因此安装分两步：
 
 ```bash
-# job-scheduler
+# 1) 安装 Python 包 + 包内前端资源
 pip install /path/to/jupyter-ml/plugins/job-scheduler/dist/jupyter_ml_job_scheduler-0.1.0-py3-none-any.whl
+pip install /path/to/jupyter-ml/plugins/image-builder/dist/jupyter_ml_image_builder-0.1.0-py3-none-any.whl   # 可选
 
-# image-builder（同仓插件，可选）
-pip install /path/to/jupyter-ml/plugins/image-builder/dist/jupyter_ml_image_builder-0.1.0-py3-none-any.whl
+# 2) 注册联邦前端到 JupyterLab 实际加载的位置（从插件源码树执行，需已 jlpm build）
+cd /path/to/jupyter-ml/plugins/job-scheduler && jupyter labextension install . --no-build
+cd /path/to/jupyter-ml/plugins/image-builder && jupyter labextension install . --no-build   # 可选
 ```
+
+> `jupyter labextension install . --no-build` 会把 `jupyter_ml_*/labextension/` 拷贝到
+> `share/jupyter/labextensions/@jupyter-ml/<name>`。等价于一次性 `jupyter lab build`。
 
 > 若 `dist/` 下尚未生成 wheel（例如仅拿到源码），见第 4 节“从源码构建 wheel”。
 
-验证包已注册：
+验证插件已注册：
 
 ```bash
 python -c "import jupyter_ml_job_scheduler; print(jupyter_ml_job_scheduler._version.__version__)"
 # 期望输出：0.1.0
+jupyter labextension list | grep jupyter-ml
+# 期望看到：@jupyter-ml/job-scheduler enabled OK
 ```
 
 ---
@@ -157,7 +165,9 @@ unzip -l dist/jupyter_ml_job_scheduler-0.1.0-py3-none-any.whl | grep labextensio
 ```
 
 > 开发态若想 Python 源码改动免重装，可用 `pip install -e .`（editable）；
-> 但前端改动仍需 `jlpm build` 后重打 wheel，再 `pip install --force-reinstall dist/*.whl`。
+> 但前端改动仍需 `jlpm build` 后重打 wheel，再 `pip install --force-reinstall dist/*.whl`，
+> 并**重新执行 `jupyter labextension install . --no-build`** 把新前端注册到 `share/`——
+> 否则服务仍会加载旧的 `share/jupyter/labextensions/@jupyter-ml/<name>` 副本（最常见“改了前端不生效”的原因）。
 
 ---
 
@@ -386,6 +396,10 @@ RUN cd /build/plugins/job-scheduler \
 RUN cd /build/plugins/image-builder \
     && jlpm install && jlpm build && python -m build --wheel --outdir /wheels
 
+# 将联邦前端注册到 JupyterLab 实际加载的位置（share/jupyter/labextensions）
+RUN cd /build/plugins/job-scheduler && jupyter labextension install . --no-build
+RUN cd /build/plugins/image-builder && jupyter labextension install . --no-build
+
 # ---------- 阶段 2：运行时 ----------
 FROM python:3.11-slim
 
@@ -405,9 +419,12 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# 安装插件：直接 pip install 预构建 wheel（已含前端，无需 labextension install）
+# 安装插件 Python 包 + 包内前端资源
 COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir /wheels/*.whl
+
+# 拷贝已注册的联邦前端（由构建期 jupyter labextension install 生成）
+COPY --from=builder /usr/local/share/jupyter/labextensions /usr/local/share/jupyter/labextensions
 
 # 固化配置
 RUN mkdir -p /root/.jupyter \

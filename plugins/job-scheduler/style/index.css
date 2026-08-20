@@ -171,7 +171,6 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 
 .jupyter-ml-jobScheduler-detail {
   display: flex;
-  flex: 1;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
@@ -191,14 +190,6 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
 .jupyter-ml-jobScheduler-runHeader select {
   margin-left: 4px;
   max-width: 110px;
-}
-
-.jupyter-ml-jobScheduler-detail {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
 }
 
 .jupyter-ml-jobScheduler-directRuns {
@@ -247,8 +238,40 @@ input.jupyter-ml-Dialog-checkbox.jp-mod-styled {
   box-shadow: 0 0 0 1px var(--jp-brand-color1);
 }
 
-.jupyter-ml-jobScheduler-list {
+.jupyter-ml-jobScheduler-split {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.jupyter-ml-jobScheduler-splitter {
+  background: transparent;
+  cursor: row-resize;
+  flex-shrink: 0;
+  height: 5px;
+  position: relative;
+}
+
+.jupyter-ml-jobScheduler-splitter::after {
+  background: var(--jp-border-color2);
+  border-radius: 2px;
+  content: '';
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 1px;
+  transition: background-color 0.15s;
+}
+
+.jupyter-ml-jobScheduler-splitter:hover::after,
+.jupyter-ml-jobScheduler-splitter:active::after {
+  background: var(--jp-brand-color1);
+}
+
+.jupyter-ml-jobScheduler-list {
   min-height: 0;
   overflow-y: auto;
 }

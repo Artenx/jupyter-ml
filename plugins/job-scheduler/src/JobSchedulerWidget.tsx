@@ -414,6 +414,9 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
     type: 'schedule' | 'run';
     targetId?: string;
   } | null>(null);
+  const [splitRatio, setSplitRatio] = React.useState(0.5);
+  const splitRef = React.useRef<HTMLDivElement | null>(null);
+  const draggingRef = React.useRef(false);
 
   const loadSchedules = React.useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -673,6 +676,30 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
     setContextMenu(null);
   };
 
+  const startSplitDrag = (event: React.MouseEvent): void => {
+    event.preventDefault();
+    draggingRef.current = true;
+    const handleMove = (moveEvent: MouseEvent): void => {
+      const container = splitRef.current;
+      if (!container || !draggingRef.current) {
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      if (rect.height === 0) {
+        return;
+      }
+      const ratio = (moveEvent.clientY - rect.top) / rect.height;
+      setSplitRatio(Math.min(0.85, Math.max(0.15, ratio)));
+    };
+    const handleUp = (): void => {
+      draggingRef.current = false;
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  };
+
   React.useEffect(() => {
     const handleClick = (): void => {
       closeContextMenu();
@@ -722,8 +749,16 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
           </span>
         </button>
       </div>
-      <ul className="jupyter-ml-jobScheduler-list">
-        {schedules.map((schedule) => (
+      <div className="jupyter-ml-jobScheduler-split" ref={splitRef}>
+        <ul
+          className="jupyter-ml-jobScheduler-list"
+          style={
+            selectedSchedule || showDirectRuns
+              ? { flex: `${splitRatio} 1 0%` }
+              : { flex: '1 1 0%' }
+          }
+        >
+          {schedules.map((schedule) => (
           <li key={schedule.id}>
             <button
               type="button"
@@ -748,11 +783,22 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
               </span>
             </button>
           </li>
-        ))}
-      </ul>
-      {selectedSchedule || showDirectRuns ? (
-        <section className="jupyter-ml-jobScheduler-detail">
-          <div className="jupyter-ml-jobScheduler-runHeader">
+          ))}
+        </ul>
+        {selectedSchedule || showDirectRuns ? (
+          <div
+            className="jupyter-ml-jobScheduler-splitter"
+            onMouseDown={startSplitDrag}
+            role="separator"
+            aria-orientation="horizontal"
+          />
+        ) : null}
+        {selectedSchedule || showDirectRuns ? (
+          <section
+            className="jupyter-ml-jobScheduler-detail"
+            style={{ flex: `${1 - splitRatio} 1 0%` }}
+          >
+            <div className="jupyter-ml-jobScheduler-runHeader">
             <h3>Run History</h3>
             <label>
               Status
@@ -789,8 +835,9 @@ export const JobSchedulerPanel: React.FC<IJobSchedulerPanelProps> = ({
               </li>
             ))}
           </ul>
-        </section>
-      ) : null}
+          </section>
+        ) : null}
+      </div>
       {contextMenu ? (
         <div
           className="jupyter-ml-jobScheduler-contextMenu"
